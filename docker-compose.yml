@@ -1,0 +1,66 @@
+services:
+  db:
+    image: postgres:13-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: hotel
+      POSTGRES_PASSWORD: aruhan0077
+      POSTGRES_DB: hotel
+      # PostgreSQL性能优化配置
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    ports:
+      - 5432:5432
+    # volumes:
+    #   - postgres_data:/var/lib/postgresql/data
+    #   - ./postgresql.conf:/etc/postgresql/postgresql.conf
+    # command: postgres -c config_file=/etc/postgresql/postgresql.conf
+    networks:
+      - hotel_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hotel -d hotel"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  redis:
+    image: redis:7.4-alpine
+    restart: always
+    ports:
+      - "6379:6379"
+    # volumes:
+    #   - redis_data:/data
+    #   - ./redis.conf:/usr/local/etc/redis/redis.conf
+    # command: redis-server /usr/local/etc/redis/redis.conf
+    networks:
+      - hotel_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # 应用服务
+  # app:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     - NODE_ENV=production
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   networks:
+  #     - hotel_network
+  #   restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  hotel_network:
+    driver: bridge
