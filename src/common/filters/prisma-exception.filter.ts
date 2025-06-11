@@ -1,100 +1,55 @@
+// src/common/filters/prisma-exception.filter.ts (可选)
 import {
   ArgumentsHost,
   Catch,
   ExceptionFilter,
   HttpStatus,
-  Logger,
 } from '@nestjs/common';
-import { BaseExceptionFilter } from '@nestjs/core';
 import { Response } from 'express';
-import {
-  PrismaClientKnownRequestError,
-  PrismaClientValidationError,
-} from '@prisma/client/runtime/library';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 
 @Catch(PrismaClientKnownRequestError)
-export class PrismaClientExceptionFilter
-  extends BaseExceptionFilter
-  implements ExceptionFilter
-{
-  private readonly logger = new Logger(PrismaClientExceptionFilter.name);
-
+export class PrismaClientExceptionFilter implements ExceptionFilter {
   catch(exception: PrismaClientKnownRequestError, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
 
-    this.logger.error(`Prisma error: ${exception.code} - ${exception.message}`);
+    const status = this.getHttpStatus(exception.code);
+    const message = this.getMessage(exception.code);
 
-    switch (exception.code) {
-      case 'P2000':
-        this.handleResponse(
-          response,
-          HttpStatus.BAD_REQUEST,
-          'Value too long for column type',
-        );
-        break;
-      case 'P2002':
-        this.handleResponse(
-          response,
-          HttpStatus.CONFLICT,
-          'Unique constraint violation',
-        );
-        break;
-      case 'P2014':
-        this.handleResponse(
-          response,
-          HttpStatus.BAD_REQUEST,
-          'Invalid ID provided',
-        );
-        break;
-      case 'P2003':
-        this.handleResponse(
-          response,
-          HttpStatus.BAD_REQUEST,
-          'Foreign key constraint violation',
-        );
-        break;
-      case 'P2025':
-        this.handleResponse(response, HttpStatus.NOT_FOUND, 'Record not found');
-        break;
-      default:
-        // Default to 500 server error
-        this.handleResponse(
-          response,
-          HttpStatus.INTERNAL_SERVER_ERROR,
-          'Database error occurred',
-        );
-        break;
-    }
-  }
-
-  private handleResponse(
-    response: Response,
-    status: HttpStatus,
-    message: string,
-  ) {
     response.status(status).json({
       statusCode: status,
       message,
       timestamp: new Date().toISOString(),
     });
   }
-}
 
-@Catch(PrismaClientValidationError)
-export class PrismaClientValidationFilter implements ExceptionFilter {
-  private readonly logger = new Logger(PrismaClientValidationFilter.name);
+  private getHttpStatus(code: string): HttpStatus {
+    switch (code) {
+      case 'P2002':
+        return HttpStatus.CONFLICT;
+      case 'P2025':
+        return HttpStatus.NOT_FOUND;
+      case 'P2003':
+      case 'P2014':
+        return HttpStatus.BAD_REQUEST;
+      default:
+        return HttpStatus.INTERNAL_SERVER_ERROR;
+    }
+  }
 
-  catch(exception: PrismaClientValidationError, host: ArgumentsHost) {
-    const ctx = host.switchToHttp();
-    const response = ctx.getResponse<Response>();
-
-    this.logger.error(`Prisma validation error: ${exception.message}`);
-
-    response.status(HttpStatus.BAD_REQUEST).json({
-      statusCode: HttpStatus.BAD_REQUEST,
-      message: 'Validation error in database query',
-      timestamp: new Date().toISOString(),
-    });
+  private getMessage(code: string): string {
+    switch (code) {
+      case 'P2002':
+        return 'Unique constraint violation';
+      case 'P2025':
+        return 'Record not found';
+      case 'P2003':
+        return 'Foreign key constraint violation';
+      case 'P2014':
+        return 'Invalid ID provided';
+      default:
+        return 'Database error occurred';
+    }
   }
 }
