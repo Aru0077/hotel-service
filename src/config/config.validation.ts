@@ -6,6 +6,7 @@ export const configValidationSchema = Joi.object({
   NODE_ENV: Joi.string()
     .valid('development', 'production', 'test')
     .default('development'),
+  API_GLOBAL_PREFIX: Joi.string().default('v1'),
 
   // 数据库配置
   DATABASE_URL: Joi.string().required(),

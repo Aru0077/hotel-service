@@ -22,6 +22,7 @@ export interface JwtConfig {
 export interface AppConfig {
   port: number;
   environment: string;
+  globalPrefix: string;
 }
 
 export interface Configuration {

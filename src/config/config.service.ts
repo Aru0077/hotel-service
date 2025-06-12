@@ -24,6 +24,8 @@ export class ConfigService {
         port: this.configService.get<number>('PORT') ?? 3000,
         environment:
           this.configService.get<string>('NODE_ENV') ?? 'development',
+        globalPrefix:
+          this.configService.get<string>('API_GLOBAL_PREFIX') ?? 'v1',
       };
 
       this._databaseConfig = {

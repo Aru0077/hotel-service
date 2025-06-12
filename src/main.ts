@@ -7,7 +7,8 @@ async function bootstrap(): Promise<void> {
   try {
     const app = await NestFactory.create(AppModule);
     const configService = app.get(ConfigService);
-    app.setGlobalPrefix('v1');
+
+    app.setGlobalPrefix(configService.app.globalPrefix);
 
     app.useGlobalPipes(
       new ValidationPipe({
@@ -18,6 +19,7 @@ async function bootstrap(): Promise<void> {
 
     await app.listen(configService.app.port);
     console.log(`应用程序运行在端口 ${configService.app.port}`);
+    console.log(`API全局前缀: ${configService.app.globalPrefix}`);
   } catch (error) {
     console.error('应用程序启动失败:', error);
     process.exit(1);
