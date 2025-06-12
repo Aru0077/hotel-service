@@ -10,85 +10,60 @@ import {
 
 @Injectable()
 export class ConfigService {
-  // 私有缓存字段
-  private _appConfig: AppConfig | null = null;
-  private _databaseConfig: DatabaseConfig | null = null;
-  private _redisConfig: RedisConfig | null = null;
-  private _jwtConfig: JwtConfig | null = null;
-  private _configuration: Configuration | null = null;
+  private readonly _appConfig: AppConfig;
+  private readonly _databaseConfig: DatabaseConfig;
+  private readonly _redisConfig: RedisConfig;
+  private readonly _jwtConfig: JwtConfig;
+  private readonly _configuration: Configuration;
 
-  constructor(private configService: NestConfigService) {}
-
-  get app(): AppConfig {
-    this._appConfig ??= {
+  constructor(private configService: NestConfigService) {
+    // 构造函数中一次性初始化所有配置
+    this._appConfig = {
       port: this.configService.get<number>('PORT')!,
       environment: this.configService.get<string>('NODE_ENV')!,
     };
-    return this._appConfig;
-  }
 
-  get database(): DatabaseConfig {
-    this._databaseConfig ??= {
+    this._databaseConfig = {
       url: this.configService.get<string>('DATABASE_URL')!,
     };
-    return this._databaseConfig;
-  }
 
-  get redis(): RedisConfig {
-    this._redisConfig ??= {
+    this._redisConfig = {
       host: this.configService.get<string>('REDIS_HOST')!,
       port: this.configService.get<number>('REDIS_PORT')!,
       password: this.configService.get<string>('REDIS_PASSWORD'),
       db: this.configService.get<number>('REDIS_DB')!,
     };
+
+    this._jwtConfig = {
+      secret: this.configService.get<string>('JWT_SECRET')!,
+      expiresIn: this.configService.get<string>('JWT_EXPIRES_IN')!,
+    };
+
+    this._configuration = {
+      app: this._appConfig,
+      database: this._databaseConfig,
+      redis: this._redisConfig,
+      jwt: this._jwtConfig,
+    };
+  }
+
+  get app(): AppConfig {
+    return this._appConfig;
+  }
+
+  get database(): DatabaseConfig {
+    return this._databaseConfig;
+  }
+
+  get redis(): RedisConfig {
     return this._redisConfig;
   }
 
   get jwt(): JwtConfig {
-    this._jwtConfig ??= {
-      secret: this.configService.get<string>('JWT_SECRET')!,
-      expiresIn: this.configService.get<string>('JWT_EXPIRES_IN')!,
-    };
     return this._jwtConfig;
   }
 
   get config(): Configuration {
-    this._configuration ??= {
-      app: this.app,
-      database: this.database,
-      redis: this.redis,
-      jwt: this.jwt,
-    };
     return this._configuration;
-  }
-
-  /**
-   * 清除所有缓存（可选方法，用于测试或配置重载场景）
-   */
-  clearCache(): void {
-    this._appConfig = null;
-    this._databaseConfig = null;
-    this._redisConfig = null;
-    this._jwtConfig = null;
-    this._configuration = null;
-  }
-
-  /**
-   * 验证配置是否已正确加载（可选方法，用于健康检查）
-   */
-  validateConfiguration(): boolean {
-    try {
-      // 通过访问所有配置属性来触发验证
-      const config = this.config;
-      return !!(
-        config.app.port &&
-        config.app.environment &&
-        config.database.url &&
-        config.redis.host &&
-        config.jwt.secret
-      );
-    } catch {
-      return false;
-    }
   }
 }

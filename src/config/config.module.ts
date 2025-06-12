@@ -10,7 +10,7 @@ import { configValidationSchema } from './config.validation';
       isGlobal: true,
       validationSchema: configValidationSchema,
       validationOptions: {
-        allowUnknown: false,
+        allowUnknown: true,
         abortEarly: true,
       },
     }),
