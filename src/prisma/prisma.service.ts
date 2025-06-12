@@ -11,7 +11,8 @@ export class PrismaService
   constructor(private readonly configService: ConfigService) {
     const dbConfig = configService.database;
     const isDevelopment = configService.app.environment === 'development';
-    // 构建标准的数据库连接URL，包含连接池参数
+
+    // 构建优化的数据库连接配置
     const connectionUrl = new URL(dbConfig.url);
     connectionUrl.searchParams.set(
       'connection_limit',
@@ -39,24 +40,5 @@ export class PrismaService
 
   async onModuleDestroy(): Promise<void> {
     await this.$disconnect();
-  }
-
-  // 优化事务处理
-  async executeTransaction<T>(
-    fn: (
-      prisma: Omit<
-        PrismaClient,
-        '$connect' | '$disconnect' | '$on' | '$transaction' | '$use'
-      >,
-    ) => Promise<T>,
-    options?: {
-      timeout?: number;
-      isolationLevel?: Prisma.TransactionIsolationLevel;
-    },
-  ): Promise<T> {
-    return await this.$transaction(fn, {
-      timeout: options?.timeout ?? 10000,
-      isolationLevel: options?.isolationLevel ?? 'ReadCommitted',
-    });
   }
 }

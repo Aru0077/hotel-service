@@ -11,7 +11,6 @@ import { RedisConfigService } from './redis-config.service';
 export class RedisService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(RedisService.name);
   private redis: Redis;
-  private subscribers: Map<string, Redis> = new Map();
 
   constructor(private readonly redisConfig: RedisConfigService) {}
 
@@ -27,20 +26,17 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleDestroy(): Promise<void> {
-    const closePromises = [this.redis?.quit()];
-    for (const subscriber of this.subscribers.values()) {
-      closePromises.push(subscriber.quit());
+    if (this.redis) {
+      await this.redis.quit();
+      this.logger.log('Redis连接已关闭');
     }
-    await Promise.all(closePromises);
-    this.subscribers.clear();
-    this.logger.log('Redis连接已关闭');
   }
 
   getClient(): Redis {
     return this.redis;
   }
 
-  // 通用缓存方法
+  // 核心缓存操作
   async set(key: string, value: any, ttl?: number): Promise<void> {
     const serializedValue = JSON.stringify(value);
     if (ttl) {
@@ -52,13 +48,26 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
   async get<T>(key: string): Promise<T | null> {
     const data = await this.redis.get(key);
-    return data ? JSON.parse(data) : null;
+    if (!data) {
+      return null;
+    }
+    try {
+      return JSON.parse(data) as T;
+    } catch (error) {
+      this.logger.error(`JSON解析失败，key: ${key}`, error);
+      return null;
+    }
   }
 
   async del(key: string): Promise<number> {
     return await this.redis.del(key);
   }
 
+  async exists(key: string): Promise<boolean> {
+    return (await this.redis.exists(key)) === 1;
+  }
+
+  // 数值操作
   async incr(key: string): Promise<number> {
     return await this.redis.incr(key);
   }
@@ -67,90 +76,29 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     return await this.redis.decr(key);
   }
 
-  // 分布式锁实现
-  async acquireLock(
-    lockKey: string,
-    expireTime: number = 10,
-  ): Promise<boolean> {
-    const result = await this.redis.set(
-      `lock:${lockKey}`,
-      Date.now().toString(),
-      'EX',
-      expireTime,
-      'NX',
-    );
-    return result === 'OK';
+  async incrby(key: string, value: number): Promise<number> {
+    return await this.redis.incrby(key, value);
   }
 
-  async releaseLock(lockKey: string): Promise<void> {
-    await this.redis.del(`lock:${lockKey}`);
+  // 设置过期时间
+  async expire(key: string, ttl: number): Promise<boolean> {
+    return (await this.redis.expire(key, ttl)) === 1;
   }
 
-  // 发布订阅功能
-  async publish(channel: string, data: any): Promise<number> {
-    return await this.redis.publish(channel, JSON.stringify(data));
+  async ttl(key: string): Promise<number> {
+    return await this.redis.ttl(key);
   }
 
-  async subscribe(
-    channel: string,
-    callback: (data: any) => void,
-  ): Promise<void> {
-    if (this.subscribers.has(channel)) {
-      this.logger.warn(`频道 ${channel} 已存在订阅`);
-      return;
-    }
-
-    const subscriber = this.redis.duplicate();
-    try {
-      await subscriber.subscribe(channel);
-      this.subscribers.set(channel, subscriber);
-
-      subscriber.on('message', (receivedChannel, message) => {
-        if (receivedChannel === channel) {
-          try {
-            const data = JSON.parse(message);
-            callback(data);
-          } catch (error) {
-            this.logger.error('消息解析失败', error);
-          }
-        }
-      });
-    } catch (error) {
-      await subscriber.quit();
-      throw error;
-    }
+  // 批量操作
+  async mget(keys: string[]): Promise<(string | null)[]> {
+    return await this.redis.mget(...keys);
   }
 
-  async unsubscribe(channel: string): Promise<void> {
-    const subscriber = this.subscribers.get(channel);
-    if (subscriber) {
-      await subscriber.unsubscribe(channel);
-      await subscriber.quit();
-      this.subscribers.delete(channel);
-    }
-  }
-
-  // 使用SCAN替代KEYS的批量删除方法
-  async deleteByPattern(pattern: string): Promise<number> {
-    let cursor = '0';
-    let deletedCount = 0;
-
-    do {
-      const result = await this.redis.scan(
-        cursor,
-        'MATCH',
-        pattern,
-        'COUNT',
-        100,
-      );
-      cursor = result[0];
-      const keys = result[1];
-
-      if (keys.length > 0) {
-        deletedCount += await this.redis.del(...keys);
-      }
-    } while (cursor !== '0');
-
-    return deletedCount;
+  async mset(keyValuePairs: Record<string, any>): Promise<void> {
+    const pairs: string[] = [];
+    Object.entries(keyValuePairs).forEach(([key, value]) => {
+      pairs.push(key, JSON.stringify(value));
+    });
+    await this.redis.mset(...pairs);
   }
 }
