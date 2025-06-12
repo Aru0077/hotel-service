@@ -7,6 +7,7 @@ async function bootstrap(): Promise<void> {
   try {
     const app = await NestFactory.create(AppModule);
     const configService = app.get(ConfigService);
+    app.setGlobalPrefix('v1');
 
     app.useGlobalPipes(
       new ValidationPipe({
