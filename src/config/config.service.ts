@@ -7,6 +7,7 @@ import {
   RedisConfig,
   JwtConfig,
 } from './config.interface';
+import { ErrorUtil } from '../common/utils/error.util';
 
 @Injectable()
 export class ConfigService {
@@ -56,24 +57,9 @@ export class ConfigService {
         jwt: this._jwtConfig,
       };
     } catch (error) {
-      const errorMessage = this.getErrorMessage(error);
+      const errorMessage = ErrorUtil.getErrorMessage(error);
       throw new Error(`配置初始化失败: ${errorMessage}`);
     }
-  }
-
-  /**
-   * 安全地提取错误消息
-   * @param error 错误对象
-   * @returns 错误消息字符串
-   */
-  private getErrorMessage(error: unknown): string {
-    if (error instanceof Error) {
-      return error.message;
-    }
-    if (typeof error === 'string') {
-      return error;
-    }
-    return '未知错误';
   }
 
   private getRequiredConfig<T>(key: string): T {

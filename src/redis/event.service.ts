@@ -1,6 +1,7 @@
 import { Injectable, OnModuleDestroy, Logger } from '@nestjs/common';
 import Redis from 'ioredis';
 import { RedisConfigService } from './redis-config.service';
+import { ErrorUtil } from '../common/utils/error.util';
 
 interface EventData {
   eventId: string;
@@ -66,7 +67,7 @@ export class EventService implements OnModuleDestroy {
 
       return subscriberCount;
     } catch (error) {
-      const errorMessage = this.getErrorMessage(error);
+      const errorMessage = ErrorUtil.getErrorMessage(error);
       this.logger.error(`发布事件失败 - 频道: ${channel}`, errorMessage);
       throw error;
     }
@@ -93,7 +94,7 @@ export class EventService implements OnModuleDestroy {
             // 使用setImmediate确保异步处理不阻塞事件循环
             setImmediate(() => {
               this.handleMessage(channel, message).catch((error) => {
-                const errorMessage = this.getErrorMessage(error);
+                const errorMessage = ErrorUtil.getErrorMessage(error);
                 this.logger.error(
                   `处理消息异常 - 频道: ${channel}`,
                   errorMessage,
@@ -104,7 +105,7 @@ export class EventService implements OnModuleDestroy {
         });
 
         subscriber.on('error', (error: Error) => {
-          const errorMessage = this.getErrorMessage(error);
+          const errorMessage = ErrorUtil.getErrorMessage(error);
           this.logger.error(`订阅频道 ${channel} 发生错误:`, errorMessage);
         });
 
@@ -118,7 +119,7 @@ export class EventService implements OnModuleDestroy {
         this.logger.debug(`已添加事件处理器 - 频道: ${channel}`);
       }
     } catch (error) {
-      const errorMessage = this.getErrorMessage(error);
+      const errorMessage = ErrorUtil.getErrorMessage(error);
       this.logger.error(`订阅事件失败 - 频道: ${channel}`, errorMessage);
       throw error;
     }
@@ -156,7 +157,7 @@ export class EventService implements OnModuleDestroy {
         await this.unsubscribeChannel(channel);
       }
     } catch (error) {
-      const errorMessage = this.getErrorMessage(error);
+      const errorMessage = ErrorUtil.getErrorMessage(error);
       this.logger.error(`取消订阅失败 - 频道: ${channel}`, errorMessage);
       throw error;
     }
@@ -215,7 +216,7 @@ export class EventService implements OnModuleDestroy {
           try {
             await handler(eventData);
           } catch (error) {
-            const errorMessage = this.getErrorMessage(error);
+            const errorMessage = ErrorUtil.getErrorMessage(error);
             this.logger.error(
               `事件处理器执行失败 - 频道: ${channel}, 事件ID: ${eventData.eventId}`,
               errorMessage,
@@ -226,7 +227,7 @@ export class EventService implements OnModuleDestroy {
         await Promise.allSettled(handlerPromises);
       }
     } catch (error) {
-      const errorMessage = this.getErrorMessage(error);
+      const errorMessage = ErrorUtil.getErrorMessage(error);
       this.logger.error(`消息解析失败 - 频道: ${channel}`, errorMessage);
     }
   }
@@ -245,20 +246,5 @@ export class EventService implements OnModuleDestroy {
 
   private generateEventId(): string {
     return `evt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  }
-
-  /**
-   * 安全地提取错误消息
-   * @param error 错误对象
-   * @returns 错误消息字符串
-   */
-  private getErrorMessage(error: unknown): string {
-    if (error instanceof Error) {
-      return error.message;
-    }
-    if (typeof error === 'string') {
-      return error;
-    }
-    return '未知错误';
   }
 }

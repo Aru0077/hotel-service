@@ -4,10 +4,11 @@ import { PrismaModule } from './prisma/prisma.module';
 import { APP_FILTER } from '@nestjs/core';
 import { PrismaClientExceptionFilter } from './common/filters/prisma-exception.filter';
 import { RedisModule } from './redis/redis.module';
+import { HealthModule } from './health/health.module';
 
 // 导入配置文件
 @Module({
-  imports: [ConfigModule, PrismaModule, RedisModule],
+  imports: [ConfigModule, PrismaModule, RedisModule, HealthModule],
   controllers: [],
   providers: [
     {

@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import Redis from 'ioredis';
 import { RedisConfigService } from './redis-config.service';
+import { ErrorUtil } from '../common/utils/error.util';
 
 @Injectable()
 export class RedisService implements OnModuleInit, OnModuleDestroy {
@@ -36,6 +37,19 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     return this.redis;
   }
 
+  private serialize(value: any): string {
+    return JSON.stringify(value);
+  }
+
+  private deserialize<T>(data: string): T | null {
+    try {
+      return JSON.parse(data) as T;
+    } catch (error) {
+      this.logger.error(`JSON解析失败`, ErrorUtil.getErrorMessage(error));
+      return null;
+    }
+  }
+
   // 核心缓存操作
   async set(key: string, value: any, ttl?: number): Promise<void> {
     const serializedValue = JSON.stringify(value);
@@ -48,15 +62,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
   async get<T>(key: string): Promise<T | null> {
     const data = await this.redis.get(key);
-    if (!data) {
-      return null;
-    }
-    try {
-      return JSON.parse(data) as T;
-    } catch (error) {
-      this.logger.error(`JSON解析失败，key: ${key}`, error);
-      return null;
-    }
+    return data ? this.deserialize<T>(data) : null;
   }
 
   async del(key: string): Promise<number> {
