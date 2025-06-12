@@ -11,26 +11,25 @@ export class PrismaService
   constructor(private readonly configService: ConfigService) {
     const dbConfig = configService.database;
     const isDevelopment = configService.app.environment === 'development';
+    // 构建标准的数据库连接URL，包含连接池参数
+    const connectionUrl = new URL(dbConfig.url);
+    connectionUrl.searchParams.set(
+      'connection_limit',
+      dbConfig.maxConnections.toString(),
+    );
+    connectionUrl.searchParams.set(
+      'pool_timeout',
+      (dbConfig.timeout / 1000).toString(),
+    );
 
     super({
       datasources: {
         db: {
-          url: dbConfig.url,
+          url: connectionUrl.toString(),
         },
       },
       log: isDevelopment ? ['query', 'error', 'warn'] : ['error'],
       errorFormat: isDevelopment ? 'pretty' : 'minimal',
-
-      // 性能优化配置
-      __internal: {
-        engine: {
-          // 连接池配置
-          connectionLimit: dbConfig.maxConnections,
-          poolTimeout: dbConfig.timeout,
-          // 查询优化
-          engineWasm: false,
-        },
-      },
     } as Prisma.PrismaClientOptions);
   }
 

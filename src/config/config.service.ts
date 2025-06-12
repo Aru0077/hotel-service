@@ -18,38 +18,54 @@ export class ConfigService {
 
   constructor(private configService: NestConfigService) {
     // 构造函数中一次性初始化所有配置
-    this._appConfig = {
-      port: this.configService.get<number>('PORT')!,
-      environment: this.configService.get<string>('NODE_ENV')!,
-    };
+    try {
+      this._appConfig = {
+        port: this.configService.get<number>('PORT') ?? 3000,
+        environment:
+          this.configService.get<string>('NODE_ENV') ?? 'development',
+      };
 
-    this._databaseConfig = {
-      url: this.configService.get<string>('DATABASE_URL')!,
-      maxConnections: this.configService.get('DATABASE_MAX_CONNECTIONS')!,
-      timeout: this.configService.get('DATABASE_TIMEOUT')!,
-    };
+      this._databaseConfig = {
+        url: this.configService.get<string>('DATABASE_URL')!,
+        maxConnections:
+          this.configService.get('DATABASE_MAX_CONNECTIONS') ?? 10,
+        timeout: this.configService.get('DATABASE_TIMEOUT') ?? 20000,
+      };
 
-    this._redisConfig = {
-      host: this.configService.get<string>('REDIS_HOST')!,
-      port: this.configService.get<number>('REDIS_PORT')!,
-      password: this.configService.get<string>('REDIS_PASSWORD'),
-      db: this.configService.get<number>('REDIS_DB')!,
-      maxRetries: this.configService.get<number>('REDIS_MAX_RETRIES')!,
-      connectTimeout: this.configService.get<number>('REDIS_CONNECT_TIMEOUT')!,
-      commandTimeout: this.configService.get<number>('REDIS_COMMAND_TIMEOUT')!,
-    };
+      this._redisConfig = {
+        host: this.configService.get<string>('REDIS_HOST') ?? 'localhost',
+        port: this.configService.get<number>('REDIS_PORT') ?? 6379,
+        password: this.configService.get<string>('REDIS_PASSWORD'),
+        db: this.configService.get<number>('REDIS_DB') ?? 0,
+        maxRetries: this.configService.get<number>('REDIS_MAX_RETRIES') ?? 3,
+        connectTimeout:
+          this.configService.get<number>('REDIS_CONNECT_TIMEOUT') ?? 10000,
+        commandTimeout:
+          this.configService.get<number>('REDIS_COMMAND_TIMEOUT') ?? 5000,
+      };
 
-    this._jwtConfig = {
-      secret: this.configService.get<string>('JWT_SECRET')!,
-      expiresIn: this.configService.get<string>('JWT_EXPIRES_IN')!,
-    };
+      this._jwtConfig = {
+        secret: this.getRequiredConfig<string>('JWT_SECRET'),
+        expiresIn: this.configService.get<string>('JWT_EXPIRES_IN') ?? '7d',
+      };
 
-    this._configuration = {
-      app: this._appConfig,
-      database: this._databaseConfig,
-      redis: this._redisConfig,
-      jwt: this._jwtConfig,
-    };
+      this._configuration = {
+        app: this._appConfig,
+        database: this._databaseConfig,
+        redis: this._redisConfig,
+        jwt: this._jwtConfig,
+      };
+    } catch (error) {
+      throw new Error(`配置初始化失败: ${error.message}`);
+    }
+  }
+
+  private getRequiredConfig<T>(key: string): T {
+    const value = this.configService.get<T>(key);
+    if (value === undefined || value === null) {
+      throw new Error(`必需的配置项 ${key} 未设置`);
+    }
+    return value;
   }
 
   get app(): AppConfig {

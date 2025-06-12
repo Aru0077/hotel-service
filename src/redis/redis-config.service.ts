@@ -38,15 +38,4 @@ export class RedisConfigService {
       connectionName: 'hotel-service',
     });
   }
-
-  getMicroserviceOptions() {
-    const config = this.configService.redis;
-    return {
-      host: config.host,
-      port: config.port,
-      password: config.password,
-      retryAttempts: 5,
-      retryDelay: 3000,
-    };
-  }
 }
