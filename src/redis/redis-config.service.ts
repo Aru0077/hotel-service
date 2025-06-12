@@ -1,4 +1,4 @@
-// src/redis/redis-config.service.ts (精简版)
+// src/redis/redis-config.service.tsAdd commentMore actions
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
@@ -7,38 +7,46 @@ import Redis from 'ioredis';
 export class RedisConfigService {
   constructor(private readonly configService: ConfigService) {}
 
+  // src/redis/redis-config.service.ts
   createRedisInstance(): Redis {
-    const redisConfig = this.configService.get('app.redis');
-
     return new Redis({
-      host: redisConfig.host,
-      port: redisConfig.port,
-      password: redisConfig.password,
-      db: redisConfig.db,
-      keepAlive: redisConfig.keepAlive,
-      connectTimeout: redisConfig.connectTimeout,
-      commandTimeout: redisConfig.commandTimeout,
-      maxRetriesPerRequest: redisConfig.maxRetriesPerRequest,
-      lazyConnect: redisConfig.lazyConnect,
+      // 基本连接配置
+      host: this.configService.get('REDIS_HOST', 'localhost'),
+      port: this.configService.get('REDIS_PORT', 6379),
+      password: this.configService.get('REDIS_PASSWORD'),
+      db: this.configService.get('REDIS_DB', 0),
+
+      // 连接优化
+      keepAlive: 5000,
+      connectTimeout: 10000,
+      commandTimeout: 5000,
+
+      // 重试策略
+      maxRetriesPerRequest: 3,
       retryStrategy: (times) => {
-        if (times > 10) return null;
-        return Math.min(times * 200, 2000);
+        // 指数退避重试策略
+        if (times > 10) return null; // 超过10次重试则放弃
+        return Math.min(times * 200, 2000); // 指数退避，最大2秒间隔
       },
+
+      // 连接管理
+      lazyConnect: true,
       enableOfflineQueue: false,
+
+      // 集群支持
       family: 4,
       enableReadyCheck: true,
-      connectionName: 'hotel-service',
-      showFriendlyErrorStack: process.env.NODE_ENV === 'development',
+
+      connectionName: 'booking-service', // 连接标识
+      showFriendlyErrorStack: process.env.NODE_ENV === 'development', // 错误处理
     });
   }
 
   getMicroserviceOptions() {
-    const redisConfig = this.configService.get('app.redis');
-
     return {
-      host: redisConfig.host,
-      port: redisConfig.port,
-      password: redisConfig.password,
+      host: this.configService.get<string>('REDIS_HOST', 'localhost'),
+      port: this.configService.get<number>('REDIS_PORT', 6379),
+      password: this.configService.get<string>('REDIS_PASSWORD'),
       retryAttempts: 5,
       retryDelay: 3000,
     };
