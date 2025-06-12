@@ -25,6 +25,8 @@ export class ConfigService {
 
     this._databaseConfig = {
       url: this.configService.get<string>('DATABASE_URL')!,
+      maxConnections: this.configService.get('DATABASE_MAX_CONNECTIONS')!,
+      timeout: this.configService.get('DATABASE_TIMEOUT')!,
     };
 
     this._redisConfig = {
@@ -32,6 +34,9 @@ export class ConfigService {
       port: this.configService.get<number>('REDIS_PORT')!,
       password: this.configService.get<string>('REDIS_PASSWORD'),
       db: this.configService.get<number>('REDIS_DB')!,
+      maxRetries: this.configService.get<number>('REDIS_MAX_RETRIES')!,
+      connectTimeout: this.configService.get<number>('REDIS_CONNECT_TIMEOUT')!,
+      commandTimeout: this.configService.get<number>('REDIS_COMMAND_TIMEOUT')!,
     };
 
     this._jwtConfig = {

@@ -1,5 +1,7 @@
 export interface DatabaseConfig {
   url: string;
+  maxConnections: number;
+  timeout: number;
 }
 
 export interface RedisConfig {
@@ -7,6 +9,9 @@ export interface RedisConfig {
   port: number;
   password?: string;
   db: number;
+  maxRetries: number;
+  connectTimeout: number;
+  commandTimeout: number;
 }
 
 export interface JwtConfig {
