@@ -6,10 +6,7 @@ import { PrismaClientExceptionFilter } from './common/filters/prisma-exception.f
 import { RedisModule } from './redis/redis.module';
 
 // 导入配置文件
-import appConfig from './config/app.config';
-import databaseConfig from './config/database.config';
-import redisConfig from './config/redis.config';
-import { validate } from './config/env.validation';
+import configuration, { validationSchema } from './config/configuration';
 
 @Module({
   imports: [
@@ -17,8 +14,12 @@ import { validate } from './config/env.validation';
       isGlobal: true,
       envFilePath:
         process.env.NODE_ENV === 'production' ? '.env.production' : '.env',
-      load: [appConfig, databaseConfig, redisConfig],
-      validate,
+      load: [configuration],
+      validationSchema,
+      validationOptions: {
+        allowUnknown: true,
+        abortEarly: true,
+      },
       cache: true,
       expandVariables: true,
     }),
