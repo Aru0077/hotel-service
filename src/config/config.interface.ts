@@ -1,7 +1,5 @@
 export interface DatabaseConfig {
   url: string;
-  maxConnections: number;
-  timeout: number;
 }
 
 export interface RedisConfig {

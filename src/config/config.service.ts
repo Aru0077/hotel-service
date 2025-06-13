@@ -30,9 +30,6 @@ export class ConfigService {
 
       this._databaseConfig = {
         url: this.configService.get<string>('DATABASE_URL')!,
-        maxConnections:
-          this.configService.get('DATABASE_MAX_CONNECTIONS') ?? 10,
-        timeout: this.configService.get('DATABASE_TIMEOUT') ?? 20000,
       };
 
       this._redisConfig = {
@@ -90,5 +87,34 @@ export class ConfigService {
 
   get config(): Configuration {
     return this._configuration;
+  }
+
+  /**
+   * 获取数据库连接信息的工具方法
+   * 可用于日志记录或监控，但会隐藏敏感信息
+   */
+  getDatabaseConnectionInfo(): {
+    host: string;
+    port: string;
+    database: string;
+    schema: string;
+    connectionLimit?: string;
+    connectTimeout?: string;
+  } {
+    try {
+      const url = new URL(this.database.url);
+      const searchParams = url.searchParams;
+
+      return {
+        host: url.hostname,
+        port: url.port || '5432',
+        database: url.pathname.slice(1),
+        schema: searchParams.get('schema') ?? 'public',
+        connectionLimit: searchParams.get('connection_limit') ?? undefined,
+        connectTimeout: searchParams.get('connect_timeout') ?? undefined,
+      };
+    } catch {
+      throw new Error('数据库URL格式无效');
+    }
   }
 }

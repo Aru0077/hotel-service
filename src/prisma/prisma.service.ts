@@ -9,24 +9,12 @@ export class PrismaService
   implements OnModuleInit, OnModuleDestroy
 {
   constructor(private readonly configService: ConfigService) {
-    const dbConfig = configService.database;
     const isDevelopment = configService.app.environment === 'development';
-
-    // 构建优化的数据库连接配置
-    const connectionUrl = new URL(dbConfig.url);
-    connectionUrl.searchParams.set(
-      'connection_limit',
-      dbConfig.maxConnections.toString(),
-    );
-    connectionUrl.searchParams.set(
-      'pool_timeout',
-      (dbConfig.timeout / 1000).toString(),
-    );
 
     super({
       datasources: {
         db: {
-          url: connectionUrl.toString(),
+          url: configService.database.url,
         },
       },
       log: isDevelopment ? ['query', 'error', 'warn'] : ['error'],
@@ -36,6 +24,18 @@ export class PrismaService
 
   async onModuleInit(): Promise<void> {
     await this.$connect();
+    // 记录连接信息（不包含敏感数据）
+    const connectionInfo = this.configService.getDatabaseConnectionInfo();
+    console.log(
+      `数据库连接已建立: ${connectionInfo.host}:${connectionInfo.port}/${connectionInfo.database}`,
+    );
+
+    if (connectionInfo.connectionLimit) {
+      console.log(`连接池大小: ${connectionInfo.connectionLimit}`);
+    }
+    if (connectionInfo.connectTimeout) {
+      console.log(`连接超时: ${connectionInfo.connectTimeout}秒`);
+    }
   }
 
   async onModuleDestroy(): Promise<void> {

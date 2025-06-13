@@ -9,9 +9,14 @@ export const configValidationSchema = Joi.object({
   API_GLOBAL_PREFIX: Joi.string().default('v1'),
 
   // 数据库配置
-  DATABASE_URL: Joi.string().required(),
-  DATABASE_MAX_CONNECTIONS: Joi.number().default(10),
-  DATABASE_TIMEOUT: Joi.number().default(20000),
+  DATABASE_URL: Joi.string()
+    .uri()
+    .pattern(/^postgresql:\/\//)
+    .required()
+    .messages({
+      'string.pattern.base': 'DATABASE_URL必须是有效的PostgreSQL连接字符串',
+      'string.uri': 'DATABASE_URL必须是有效的URI格式',
+    }),
 
   // Redis配置
   REDIS_HOST: Joi.string().default('localhost'),
