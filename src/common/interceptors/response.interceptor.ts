@@ -1,4 +1,7 @@
-// 2. 优化的响应转换拦截器 - src/common/interceptors/transform.interceptor.ts
+// ===============================
+// 3. 精简版响应转换拦截器
+// src/common/interceptors/response.interceptor.ts
+// ===============================
 import {
   Injectable,
   NestInterceptor,
@@ -10,7 +13,7 @@ import { map } from 'rxjs/operators';
 import { ApiResponse } from '../interfaces/response.interface';
 
 @Injectable()
-export class TransformInterceptor<T>
+export class ResponseInterceptor<T>
   implements NestInterceptor<T, ApiResponse<T>>
 {
   intercept(
@@ -19,8 +22,8 @@ export class TransformInterceptor<T>
   ): Observable<ApiResponse<T>> {
     const request = context.switchToHttp().getRequest();
 
-    // 跳过健康检查端点以提升性能
-    if (this.isHealthCheckPath(request.url)) {
+    // 跳过健康检查和API文档端点
+    if (this.shouldSkip(request.url)) {
       return next.handle();
     }
 
@@ -34,11 +37,8 @@ export class TransformInterceptor<T>
     );
   }
 
-  private isHealthCheckPath(url: string): boolean {
-    return (
-      url.includes('/health') ||
-      url.includes('/api-json') ||
-      url.includes('/api')
-    );
+  private shouldSkip(url: string): boolean {
+    const skipPaths = ['/health', '/api-json', '/api'];
+    return skipPaths.some((path) => url.includes(path));
   }
 }
