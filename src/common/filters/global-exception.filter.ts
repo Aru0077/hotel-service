@@ -14,6 +14,12 @@ import { Request, Response } from 'express';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { ApiResponse } from '../interfaces/response.interface';
 
+interface HttpExceptionResponse {
+  message: string | string[];
+  error?: string;
+  statusCode?: number;
+}
+
 @Catch()
 export class GlobalExceptionFilter extends BaseExceptionFilter {
   private readonly logger = new Logger(GlobalExceptionFilter.name);
@@ -31,10 +37,14 @@ export class GlobalExceptionFilter extends BaseExceptionFilter {
     if (exception instanceof HttpException) {
       status = exception.getStatus();
       const exceptionResponse = exception.getResponse();
-      message =
-        typeof exceptionResponse === 'string'
-          ? exceptionResponse
-          : (exceptionResponse as any)?.message || '请求处理失败';
+      if (typeof exceptionResponse === 'string') {
+        message = exceptionResponse;
+      } else {
+        const httpResponse = exceptionResponse as HttpExceptionResponse;
+        message = Array.isArray(httpResponse.message)
+          ? httpResponse.message.join(', ')
+          : (httpResponse.message ?? '请求处理失败');
+      }
       error = exception.name;
     }
     // 处理 Prisma 异常
