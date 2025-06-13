@@ -4,4 +4,6 @@ export interface ApiResponse<T = any> {
   data?: T;
   message: string;
   timestamp: string;
+  error?: string;
+  statusCode?: number;
 }

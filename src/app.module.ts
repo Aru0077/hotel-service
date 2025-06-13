@@ -13,20 +13,20 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
   imports: [ConfigModule, PrismaModule, RedisModule, HealthModule],
   controllers: [],
   providers: [
-    // Prisma异常过滤器
+    // 响应转换拦截器 - 优先级最高
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: TransformInterceptor,
+    },
+    // Prisma异常过滤器 - 第一个过滤器
     {
       provide: APP_FILTER,
       useClass: PrismaClientExceptionFilter,
     },
-    // 全局异常过滤器
+    // 全局异常过滤器 - 最后的兜底处理
     {
       provide: APP_FILTER,
       useClass: AllExceptionsFilter,
-    },
-    // 响应转换拦截器
-    {
-      provide: APP_INTERCEPTOR,
-      useClass: TransformInterceptor,
     },
   ],
 })

@@ -1,4 +1,4 @@
-// 2. 响应转换拦截器 - src/common/interceptors/transform.interceptor.ts
+// 2. 优化的响应转换拦截器 - src/common/interceptors/transform.interceptor.ts
 import {
   Injectable,
   NestInterceptor,
@@ -17,6 +17,13 @@ export class TransformInterceptor<T>
     context: ExecutionContext,
     next: CallHandler,
   ): Observable<ApiResponse<T>> {
+    const request = context.switchToHttp().getRequest();
+
+    // 跳过健康检查端点以提升性能
+    if (this.isHealthCheckPath(request.url)) {
+      return next.handle();
+    }
+
     return next.handle().pipe(
       map((data) => ({
         success: true,
@@ -24,6 +31,14 @@ export class TransformInterceptor<T>
         message: '操作成功',
         timestamp: new Date().toISOString(),
       })),
+    );
+  }
+
+  private isHealthCheckPath(url: string): boolean {
+    return (
+      url.includes('/health') ||
+      url.includes('/api-json') ||
+      url.includes('/api')
     );
   }
 }
