@@ -29,7 +29,7 @@ export class ConfigService {
       };
 
       this._databaseConfig = {
-        url: this.configService.get<string>('DATABASE_URL')!,
+        url: this.configService.get<string>('DATABASE_URL') ?? '',
       };
 
       this._redisConfig = {
