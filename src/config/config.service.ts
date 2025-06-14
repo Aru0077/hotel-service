@@ -47,6 +47,9 @@ export class ConfigService {
       this._jwtConfig = {
         secret: this.getRequiredConfig<string>('JWT_SECRET'),
         expiresIn: this.configService.get<string>('JWT_EXPIRES_IN') ?? '7d',
+        refreshSecret: this.getRequiredConfig<string>('JWT_REFRESH_SECRET'),
+        refreshExpiresIn:
+          this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') ?? '7d',
       };
 
       this._configuration = {
