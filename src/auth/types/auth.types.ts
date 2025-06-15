@@ -20,7 +20,13 @@ export interface AuthenticatedUser {
 
 export interface AuthResponse {
   access_token: string;
+  refresh_token: string;
   user: AuthenticatedUser;
+}
+
+export interface RefreshResponse {
+  access_token: string;
+  refresh_token: string;
 }
 
 // 扩展Express Request类型

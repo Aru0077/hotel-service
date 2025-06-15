@@ -26,6 +26,9 @@ export class AuthResponseDto {
   @ApiProperty({ description: 'JWT访问令牌' })
   access_token: string;
 
+  @ApiProperty({ description: '刷新令牌' })
+  refresh_token: string;
+
   @ApiProperty({ description: '用户信息', type: UserInfoDto })
   user: UserInfoDto;
 }

@@ -29,6 +29,7 @@ import { Roles } from './decorators/roles.decorator';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { StrictThrottle } from '../security/decorators/throttle.decorators';
 import type { JwtPayload } from './types/auth.types';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
 
 @ApiTags('认证')
 @Controller('auth')
@@ -79,6 +80,29 @@ export class AuthController {
   @ApiResponse({ status: 200, description: '登录成功', type: AuthResponseDto })
   async signIn(@Body() loginDto: LoginDto): Promise<AuthResponseDto> {
     return this.authService.signIn(loginDto.username, loginDto.password);
+  }
+
+  @Public()
+  @Post('refresh')
+  @StrictThrottle()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: '刷新访问令牌' })
+  @ApiResponse({ status: 200, description: '刷新成功' })
+  async refreshToken(@Body() refreshTokenDto: RefreshTokenDto) {
+    return this.authService.refreshToken(refreshTokenDto.refreshToken);
+  }
+
+  @Post('logout')
+  @StrictThrottle()
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '登出' })
+  @ApiResponse({ status: 200, description: '登出成功' })
+  async logout(
+    @Body() refreshTokenDto: RefreshTokenDto,
+  ): Promise<{ message: string }> {
+    await this.authService.logout(refreshTokenDto.refreshToken);
+    return { message: '登出成功' };
   }
 
   @Get('profile')
