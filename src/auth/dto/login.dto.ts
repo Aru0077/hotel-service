@@ -3,13 +3,13 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsString, MinLength } from 'class-validator';
 
 export class LoginDto {
-  @ApiProperty({ description: '用户名', example: 'john_doe' })
+  @ApiProperty({ description: '用户名' })
   @IsString()
-  @MinLength(1, { message: '用户名不能为空' })
+  @MinLength(1)
   username: string;
 
-  @ApiProperty({ description: '密码', example: 'password123' })
+  @ApiProperty({ description: '密码' })
   @IsString()
-  @MinLength(1, { message: '密码不能为空' })
+  @MinLength(1)
   password: string;
 }

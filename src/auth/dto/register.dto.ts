@@ -10,43 +10,67 @@ import {
 } from 'class-validator';
 
 export class RegisterUserDto {
-  @ApiProperty({ description: '用户名', example: 'john_doe' })
+  @ApiProperty({ description: '用户名' })
   @IsString()
-  @MinLength(3, { message: '用户名至少3个字符' })
-  @MaxLength(20, { message: '用户名最多20个字符' })
-  @Matches(/^[a-zA-Z0-9_]+$/, { message: '用户名只能包含字母、数字和下划线' })
+  @MinLength(3)
+  @MaxLength(20)
+  @Matches(/^[a-zA-Z0-9_]+$/)
   username: string;
 
-  @ApiProperty({ description: '密码', example: 'StrongPassword123!' })
+  @ApiProperty({ description: '密码' })
   @IsString()
-  @MinLength(8, { message: '密码至少8个字符' })
-  @MaxLength(50, { message: '密码最多50个字符' })
+  @MinLength(8)
   password: string;
 
-  @ApiProperty({
-    description: '邮箱',
-    example: 'user@example.com',
-    required: false,
-  })
+  @ApiProperty({ description: '邮箱', required: false })
   @IsOptional()
-  @IsEmail({}, { message: '邮箱格式不正确' })
+  @IsEmail()
   email?: string;
 }
 
-export class RegisterMerchantDto extends RegisterUserDto {
-  @ApiProperty({ description: '商家联系手机号', example: '+1234567890' })
+export class RegisterMerchantDto {
+  @ApiProperty({ description: '用户名' })
   @IsString()
-  @Matches(/^\+?[1-9]\d{1,14}$/, { message: '手机号格式不正确' })
+  @MinLength(3)
+  @MaxLength(20)
+  @Matches(/^[a-zA-Z0-9_]+$/)
+  username: string;
+
+  @ApiProperty({ description: '密码' })
+  @IsString()
+  @MinLength(8)
+  password: string;
+
+  @ApiProperty({ description: '手机号' })
+  @IsString()
+  @Matches(/^\+?[1-9]\d{1,14}$/)
   phone: string;
+
+  @ApiProperty({ description: '邮箱', required: false })
+  @IsOptional()
+  @IsEmail()
+  email?: string;
 }
 
-export class RegisterAdminDto extends RegisterUserDto {
-  @ApiProperty({ description: '管理员手机号', example: '+1234567890' })
+export class RegisterAdminDto {
+  @ApiProperty({ description: '用户名' })
   @IsString()
-  @Matches(/^\+?[1-9]\d{1,14}$/, { message: '手机号格式不正确' })
+  @MinLength(3)
+  @MaxLength(20)
+  @Matches(/^[a-zA-Z0-9_]+$/)
+  username: string;
+
+  @ApiProperty({ description: '密码' })
+  @IsString()
+  @MinLength(8)
+  password: string;
+
+  @ApiProperty({ description: '手机号' })
+  @IsString()
+  @Matches(/^\+?[1-9]\d{1,14}$/)
   phone: string;
 
-  @ApiProperty({ description: '管理员邮箱', example: 'admin@example.com' })
-  @IsEmail({}, { message: '邮箱格式不正确' })
+  @ApiProperty({ description: '邮箱' })
+  @IsEmail()
   email: string;
 }
