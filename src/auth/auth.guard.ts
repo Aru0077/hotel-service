@@ -1,5 +1,4 @@
-// # 5. 认证守卫（官方方案）
-// # src/auth/auth.guard.ts
+// src/auth/auth.guard.ts
 import {
   CanActivate,
   ExecutionContext,
@@ -7,7 +6,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '../config/config.service';
+import { jwtConstants } from './constants';
 import { Request } from 'express';
 import { Reflector } from '@nestjs/core';
 import { IS_PUBLIC_KEY } from './decorators/public.decorator';
@@ -16,7 +15,6 @@ import { IS_PUBLIC_KEY } from './decorators/public.decorator';
 export class AuthGuard implements CanActivate {
   constructor(
     private jwtService: JwtService,
-    private configService: ConfigService,
     private reflector: Reflector,
   ) {}
 
@@ -32,16 +30,15 @@ export class AuthGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<Request>();
     const token = this.extractTokenFromHeader(request);
     if (!token) {
-      throw new UnauthorizedException('未授权访问');
+      throw new UnauthorizedException();
     }
-
     try {
       const payload = await this.jwtService.verifyAsync(token, {
-        secret: this.configService.jwt.secret,
+        secret: jwtConstants.secret,
       });
       request['user'] = payload;
     } catch {
-      throw new UnauthorizedException('令牌无效');
+      throw new UnauthorizedException();
     }
     return true;
   }

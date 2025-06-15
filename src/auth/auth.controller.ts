@@ -1,5 +1,4 @@
-// # 7. 认证控制器
-// # src/auth/auth.controller.ts
+// src/auth/auth.controller.ts
 import {
   Controller,
   Post,
@@ -29,10 +28,9 @@ import {
   CurrentUser,
   CurrentUserPayload,
 } from './decorators/current-user.decorator';
-import {
-  SuperStrictThrottle,
-  StrictThrottle,
-} from '../security/decorators/throttle.decorators';
+import { Roles } from './decorators/roles.decorator';
+import { RolesGuard } from './roles.guard';
+import { UserRole } from '@prisma/client';
 
 @ApiTags('用户认证')
 @Controller('auth')
@@ -41,15 +39,10 @@ export class AuthController {
 
   @Post('register/user')
   @Public()
-  @SuperStrictThrottle()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: '普通用户注册' })
   @ApiBody({ type: UserRegisterDto })
-  @ApiResponse({
-    status: 201,
-    description: '注册成功',
-    type: AuthResponseDto,
-  })
+  @ApiResponse({ status: 201, description: '注册成功', type: AuthResponseDto })
   async registerUser(
     @Body() registerDto: UserRegisterDto,
   ): Promise<AuthResponseDto> {
@@ -58,15 +51,10 @@ export class AuthController {
 
   @Post('register/merchant')
   @Public()
-  @SuperStrictThrottle()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: '商家用户注册' })
   @ApiBody({ type: MerchantRegisterDto })
-  @ApiResponse({
-    status: 201,
-    description: '注册成功',
-    type: AuthResponseDto,
-  })
+  @ApiResponse({ status: 201, description: '注册成功', type: AuthResponseDto })
   async registerMerchant(
     @Body() registerDto: MerchantRegisterDto,
   ): Promise<AuthResponseDto> {
@@ -75,15 +63,12 @@ export class AuthController {
 
   @Post('register/admin')
   @Public()
-  @SuperStrictThrottle()
+  @Roles(UserRole.ADMIN)
+  @UseGuards(RolesGuard)
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: '管理员注册' })
+  @ApiOperation({ summary: '管理员注册（仅管理员可操作）' })
   @ApiBody({ type: AdminRegisterDto })
-  @ApiResponse({
-    status: 201,
-    description: '注册成功',
-    type: AuthResponseDto,
-  })
+  @ApiResponse({ status: 201, description: '注册成功', type: AuthResponseDto })
   async registerAdmin(
     @Body() registerDto: AdminRegisterDto,
   ): Promise<AuthResponseDto> {
@@ -92,15 +77,10 @@ export class AuthController {
 
   @Post('login')
   @Public()
-  @StrictThrottle()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: '用户登录' })
   @ApiBody({ type: LoginDto })
-  @ApiResponse({
-    status: 200,
-    description: '登录成功',
-    type: AuthResponseDto,
-  })
+  @ApiResponse({ status: 200, description: '登录成功', type: AuthResponseDto })
   async login(@Body() loginDto: LoginDto): Promise<AuthResponseDto> {
     return this.authService.login(loginDto);
   }
@@ -108,11 +88,18 @@ export class AuthController {
   @Get('profile')
   @ApiBearerAuth()
   @ApiOperation({ summary: '获取当前用户信息' })
-  @ApiResponse({
-    status: 200,
-    description: '用户信息',
-  })
+  @ApiResponse({ status: 200, description: '用户信息' })
   getProfile(@CurrentUser() user: CurrentUserPayload) {
     return user;
+  }
+
+  @Get('admin-only')
+  @Roles(UserRole.ADMIN)
+  @UseGuards(RolesGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '管理员专用接口示例' })
+  @ApiResponse({ status: 200, description: '管理员信息' })
+  adminOnly(@CurrentUser() user: CurrentUserPayload) {
+    return { message: '这是管理员专用接口', user };
   }
 }

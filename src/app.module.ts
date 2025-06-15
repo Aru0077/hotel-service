@@ -9,6 +9,7 @@ import { GlobalExceptionFilter } from './common/filters/global-exception.filter'
 import { SecurityModule } from './security/security.module';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { AuthModule } from './auth/auth.module';
+import { UsersModule } from './users/users.module';
 
 // 导入配置文件
 @Module({
@@ -18,6 +19,7 @@ import { AuthModule } from './auth/auth.module';
     RedisModule,
     HealthModule,
     SecurityModule,
+    UsersModule,
     AuthModule,
   ],
   controllers: [],

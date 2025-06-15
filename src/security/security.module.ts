@@ -4,7 +4,7 @@
 // ===============================
 import { Module } from '@nestjs/common';
 import { ThrottlerModule } from '@nestjs/throttler';
-import { ConfigService } from '../config/config.service';
+import { ConfigService } from '@nestjs/config';
 import { ExecutionContext } from '@nestjs/common';
 import { Request } from 'express';
 
@@ -38,7 +38,7 @@ import { Request } from 'express';
         },
         // 可选：基于环境的配置
         errorMessage:
-          configService.app.environment === 'development'
+          configService.get('NODE_ENV') === 'development'
             ? '请求过于频繁，请稍后再试'
             : 'Too many requests',
       }),

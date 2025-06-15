@@ -1,13 +1,11 @@
-// # 8. 认证模块
-// # src/auth/auth.module.ts
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
-import { ConfigService } from '../config/config.service';
-import { UsersModule } from '../users/users.module';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { AuthGuard } from './auth.guard';
+import { UsersModule } from '../users/users.module';
 
 @Module({
   imports: [
@@ -16,12 +14,13 @@ import { AuthGuard } from './auth.guard';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         global: true,
-        secret: configService.jwt.secret,
-        signOptions: { expiresIn: configService.jwt.expiresIn },
+        secret: configService.get<string>('JWT_SECRET'),
+        signOptions: {
+          expiresIn: configService.get<string>('JWT_EXPIRES_IN'),
+        },
       }),
     }),
   ],
-  controllers: [AuthController],
   providers: [
     AuthService,
     {
@@ -29,6 +28,7 @@ import { AuthGuard } from './auth.guard';
       useClass: AuthGuard,
     },
   ],
+  controllers: [AuthController],
   exports: [AuthService],
 })
 export class AuthModule {}

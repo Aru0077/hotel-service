@@ -1,5 +1,3 @@
-// # 3. 认证相关DTO
-// # src/auth/dto/auth.dto.ts
 import { ApiProperty } from '@nestjs/swagger';
 import {
   IsString,

@@ -1,41 +1,22 @@
-// src/redis/redis-config.service.ts
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '../config/config.service';
+import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 
 @Injectable()
 export class RedisConfigService {
-  constructor(private readonly configService: ConfigService) {}
+  constructor(private configService: ConfigService) {}
 
-  // src/redis/redis-config.service.ts
   createRedisInstance(): Redis {
-    const config = this.configService.redis;
-
     return new Redis({
-      // 基本连接配置
-      host: config.host,
-      port: config.port,
-      password: config.password,
-      db: config.db,
-
-      // 性能优化配置
-      keepAlive: 5000,
-      connectTimeout: config.connectTimeout,
-      commandTimeout: config.commandTimeout,
-      maxRetriesPerRequest: config.maxRetries,
-
-      // 优化的重试策略
-      retryStrategy: (times) => {
-        if (times > config.maxRetries) return null;
-        return Math.min(times * 200, 2000);
-      },
-
-      // 连接池优化
+      host: this.configService.get<string>('REDIS_HOST'),
+      port: this.configService.get<number>('REDIS_PORT'),
+      password: this.configService.get<string>('REDIS_PASSWORD'),
+      db: this.configService.get<number>('REDIS_DB'),
+      connectTimeout: 10000,
+      commandTimeout: 5000,
+      maxRetriesPerRequest: 3,
+      retryStrategy: (times) => Math.min(times * 200, 2000),
       lazyConnect: true,
-      enableOfflineQueue: false,
-      family: 4,
-      enableReadyCheck: true,
-      connectionName: 'hotel-service',
     });
   }
 }

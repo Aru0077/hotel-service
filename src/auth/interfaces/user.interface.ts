@@ -9,7 +9,11 @@ export interface User {
   status: string;
 }
 
+export interface UserWithPassword extends User {
+  password: string;
+}
+
 export interface AuthResult {
   access_token: string;
-  user: User;
+  user: Omit<User, 'password'>;
 }

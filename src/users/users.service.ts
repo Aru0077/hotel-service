@@ -1,64 +1,14 @@
-// # 4. 用户服务（数据层）
-// # src/users/users.service.ts
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UserRole, UserStatus } from '@prisma/client';
-import { User } from '../auth/interfaces/user.interface';
+import { User, UserWithPassword } from '../auth/interfaces/user.interface';
 
 @Injectable()
 export class UsersService {
   constructor(private prisma: PrismaService) {}
 
-  async findByUsername(username: string): Promise<User | null> {
-    const user = await this.prisma.user.findUnique({
-      where: { username },
-      select: {
-        id: true,
-        username: true,
-        password: true,
-        email: true,
-        phone: true,
-        role: true,
-        status: true,
-      },
-    });
-    return user;
-  }
-
-  async findByEmail(email: string): Promise<User | null> {
-    const user = await this.prisma.user.findUnique({
-      where: { email },
-      select: {
-        id: true,
-        username: true,
-        password: true,
-        email: true,
-        phone: true,
-        role: true,
-        status: true,
-      },
-    });
-    return user;
-  }
-
-  async findByPhone(phone: string): Promise<User | null> {
-    const user = await this.prisma.user.findUnique({
-      where: { phone },
-      select: {
-        id: true,
-        username: true,
-        password: true,
-        email: true,
-        phone: true,
-        role: true,
-        status: true,
-      },
-    });
-    return user;
-  }
-
-  async findByIdentifier(identifier: string): Promise<User | null> {
-    const user = await this.prisma.user.findFirst({
+  async findByIdentifier(identifier: string): Promise<UserWithPassword | null> {
+    return this.prisma.user.findFirst({
       where: {
         OR: [
           { username: identifier },
@@ -66,21 +16,11 @@ export class UsersService {
           { phone: identifier },
         ],
       },
-      select: {
-        id: true,
-        username: true,
-        password: true,
-        email: true,
-        phone: true,
-        role: true,
-        status: true,
-      },
     });
-    return user;
   }
 
   async findById(id: string): Promise<User | null> {
-    const user = await this.prisma.user.findUnique({
+    return this.prisma.user.findUnique({
       where: { id },
       select: {
         id: true,
@@ -91,7 +31,20 @@ export class UsersService {
         status: true,
       },
     });
-    return user;
+  }
+
+  async checkUserExists(
+    username: string,
+    email: string,
+    phone?: string,
+  ): Promise<boolean> {
+    const existingUser = await this.prisma.user.findFirst({
+      where: {
+        OR: [{ username }, { email }, ...(phone ? [{ phone }] : [])],
+      },
+      select: { id: true },
+    });
+    return !!existingUser;
   }
 
   async createUser(userData: {
@@ -102,7 +55,7 @@ export class UsersService {
     role: UserRole;
     status?: UserStatus;
   }): Promise<User> {
-    const user = await this.prisma.user.create({
+    return this.prisma.user.create({
       data: {
         ...userData,
         status: userData.status ?? UserStatus.ACTIVE,
@@ -116,7 +69,6 @@ export class UsersService {
         status: true,
       },
     });
-    return user;
   }
 
   async createUserWithProfile(userData: {
