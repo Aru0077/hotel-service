@@ -34,9 +34,6 @@ export class ResponseInterceptor<T>
       return next.handle() as Observable<ApiResponse<T>>;
     }
 
-    // 获取缓存的时间戳
-    const timestamp = this.getCachedTimestamp();
-
     return next.handle().pipe(
       map(
         (data: T): ApiResponse<T> => ({
@@ -44,7 +41,7 @@ export class ResponseInterceptor<T>
           success: true,
           data,
           message: '操作成功',
-          timestamp,
+          timestamp: new Date().toISOString(),
         }),
       ),
     );
@@ -53,20 +50,5 @@ export class ResponseInterceptor<T>
   private shouldSkip(url: string): boolean {
     const skipPaths = ['/health', '/api-json', '/api'];
     return skipPaths.some((path) => url.includes(path));
-  }
-  /**
-   * 获取缓存的时间戳，减少频繁的时间戳生成
-   */
-  private getCachedTimestamp(): string {
-    const now = Date.now();
-
-    // 如果超过缓存时间，更新时间戳
-    if (now - this.lastUpdate > this.CACHE_DURATION) {
-      this.timestampCache = now;
-      this.lastUpdate = now;
-    }
-
-    // 直接返回ISO字符串，避免重复转换
-    return new Date(this.timestampCache).toISOString();
   }
 }
