@@ -13,3 +13,256 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ================================
+// 用户认证核心表
+// ================================
+
+// 基础用户表 - 统一认证入口
+model User {
+  id       String  @id @default(cuid())
+  username String  @unique // 用户名（必填）
+  password String // 密码哈希（必填）
+  phone    String? @unique // 手机号（注册后绑定，用于登录和找回密码，仅管理员和商家）
+
+  // 角色和状态
+  role   UserRole // 用户角色
+  status UserStatus @default(ACTIVE) // 用户状态
+
+  // 第三方登录
+  facebookId String? @unique // Facebook用户ID（仅普通用户）
+  email      String? @unique // 邮箱（普通用户接受订单信息）
+
+  // 验证状态
+  emailVerified Boolean @default(false) // 邮箱验证状态
+  phoneVerified Boolean @default(false) // 手机验证状态（商家/管理员必须验证才能使用完整功能）
+
+  // 时间戳
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  lastLoginAt DateTime? // 最后登录时间
+
+  // 关联关系
+  userProfile   UserProfile? // 普通用户档案
+  hotels        Hotel[] // 商家管理的宾馆列表
+  refreshTokens RefreshToken[] // 刷新令牌
+
+  @@map("users")
+}
+
+// 普通用户档案表
+model UserProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // 个人信息
+  nickname String? // 昵称
+  avatar   String? // 头像URL
+  birthday DateTime? // 生日
+  gender   Gender? // 性别
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // 关联信息
+  guestProfiles  GuestProfile[] // 入住人员信息
+  paymentMethods PaymentMethod[] // 支付方式
+
+  @@map("user_profiles")
+}
+
+// 宾馆信息表（暂时保留，后续扩展用）
+model Hotel {
+  id         String @id @default(cuid())
+  merchantId String // 商家用户ID
+  merchant   User   @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  // 宾馆基本信息
+  name        String // 宾馆名称
+  description String? // 宾馆描述
+  starRating  Int? // 星级评定（1-5星）
+  hotelType   String? // 宾馆类型
+
+  // 商业信息
+  businessLicense String // 营业执照号
+  contactPerson   String // 联系人姓名
+  contactPhone    String // 联系人手机号（必须验证）
+
+  // 宾馆联系信息
+  hotelPhone String // 宾馆前台电话
+  hotelEmail String? // 宾馆邮箱
+  website    String? // 官方网站
+
+  // 地址信息
+  province  String // 省份/地区
+  city      String // 城市
+  district  String? // 区县
+  address   String // 详细地址
+  zipCode   String? // 邮政编码
+  latitude  Float? // 纬度
+  longitude Float? // 经度
+
+  // 服务设施
+  facilities   String[] // 设施列表
+  amenities    String[] // 便民设施
+  checkInTime  String   @default("14:00") // 入住时间
+  checkOutTime String   @default("12:00") // 退房时间
+
+  // 审核状态
+  verificationStatus HotelVerificationStatus @default(PENDING)
+  verifiedAt         DateTime? // 审核通过时间
+  rejectionReason    String? // 审核拒绝原因
+
+  // 经营状态
+  isActive Boolean @default(true) // 是否正常营业
+  isOnline Boolean @default(false) // 是否在线接单
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([merchantId])
+  @@map("hotels")
+}
+
+// 入住人员信息表
+model GuestProfile {
+  id            String      @id @default(cuid())
+  userProfileId String
+  userProfile   UserProfile @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
+
+  // 入住人信息
+  firstName      String // 名
+  lastName       String // 姓
+  passportNumber String // 护照号码
+  gender         Gender? // 性别
+  nationality    String  @default("蒙古国") // 国籍
+
+  // 标记信息
+  isDefault Boolean @default(false) // 是否为默认入住人
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userProfileId, passportNumber]) // 同一用户不能添加相同护照号的入住人
+  @@map("guest_profiles")
+}
+
+// 支付方式表 - 仅支持银联支付
+model PaymentMethod {
+  id            String      @id @default(cuid())
+  userProfileId String
+  userProfile   UserProfile @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
+
+  // 银联卡信息（加密存储）
+  cardNumber     String // 银联卡号（脱敏显示）
+  cardHolderName String // 持卡人姓名
+  expiryMonth    Int // 过期月份
+  expiryYear     Int // 过期年份
+  lastFourDigits String // 卡号后四位（用于显示）
+
+  // 状态
+  isDefault Boolean @default(false) // 是否为默认支付方式
+  isActive  Boolean @default(true) // 是否可用
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("payment_methods")
+}
+
+// ================================
+// 认证支持表
+// ================================
+
+model VerificationCode {
+  id String @id @default(cuid())
+
+  // 验证信息
+  identifier String // 手机号或邮箱
+  code       String // 验证码
+  type       VerificationCodeType // 验证码类型
+  purpose    VerificationPurpose // 使用目的
+
+  // 状态
+  isUsed      Boolean @default(false) // 是否已使用
+  attempts    Int     @default(0) // 尝试次数
+  maxAttempts Int     @default(3) // 最大尝试次数
+
+  // 有效期
+  expiresAt DateTime // 过期时间
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([identifier, type, purpose, isUsed])
+  @@map("verification_codes")
+}
+
+// 刷新令牌表 - 支持安全的登录状态管理
+model RefreshToken {
+  id     String @id @default(cuid())
+  token  String @unique // 刷新令牌
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // 设备信息
+  deviceId   String? // 设备标识
+  deviceName String? // 设备名称
+  userAgent  String? // 用户代理
+  ipAddress  String? // IP地址
+  platform   String? // 平台（iOS、Android、Web）
+
+  // 有效期
+  expiresAt DateTime // 过期时间
+  isRevoked Boolean  @default(false) // 是否已撤销
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, isRevoked])
+  @@map("refresh_tokens")
+}
+
+// ================================
+// 枚举定义
+// ================================
+
+enum UserRole {
+  MERCHANT // 商家（可管理多个宾馆）
+  USER // 普通用户
+  ADMIN // 管理员
+}
+
+enum UserStatus {
+  ACTIVE // 正常状态
+  INACTIVE // 未激活
+  BANNED // 被封禁
+  PENDING_VERIFICATION // 待验证
+}
+
+enum Gender {
+  MALE // 男性
+  FEMALE // 女性
+  OTHER // 其他
+}
+
+enum HotelVerificationStatus {
+  PENDING // 待审核
+  APPROVED // 审核通过
+  REJECTED // 审核拒绝
+  SUSPENDED // 暂停营业
+}
+
+enum VerificationCodeType {
+  SMS // 短信验证码
+  EMAIL // 邮箱验证码
+}
+
+enum VerificationPurpose {
+  REGISTRATION // 注册
+  LOGIN // 登录
+  PASSWORD_RESET // 密码重置
+  PHONE_BINDING // 手机号绑定
+  EMAIL_VERIFY // 邮箱验证
+  HOTEL_CONTACT // 宾馆联系人验证
+}
