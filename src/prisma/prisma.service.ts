@@ -17,11 +17,11 @@ export class PrismaService
       },
       log:
         configService.get<string>('NODE_ENV') === 'development'
-          ? ['query', 'error', 'warn']
+          ? ['error', 'warn']
           : ['error'],
     });
   }
-
+  //'query',
   async onModuleInit(): Promise<void> {
     await this.$connect();
   }

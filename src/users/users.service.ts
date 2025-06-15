@@ -67,9 +67,36 @@ export class UsersService {
     return user;
   }
 
-  async findOne(username: string): Promise<User | null> {
+  async findByUsername(username: string): Promise<User | null> {
     return this.prisma.user.findUnique({
       where: { username },
+    });
+  }
+
+  async findByPhone(phone: string): Promise<User | null> {
+    return this.prisma.user.findUnique({
+      where: { phone },
+    });
+  }
+
+  async findByUsernameOrPhone(usernameOrPhone: string): Promise<User | null> {
+    // 简单判断是否为手机号格式
+    const isPhone = /^\+?[1-9]\d{1,14}$/.test(usernameOrPhone);
+
+    if (isPhone) {
+      return this.findByPhone(usernameOrPhone);
+    } else {
+      return this.findByUsername(usernameOrPhone);
+    }
+  }
+
+  async updatePhone(userId: string, phone: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        phone,
+        phoneVerified: true,
+      },
     });
   }
 

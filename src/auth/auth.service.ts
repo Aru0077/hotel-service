@@ -10,11 +10,7 @@ import { UsersService } from '../users/users.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { UserRole, UserStatus, User } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
-import {
-  RegisterUserDto,
-  RegisterMerchantDto,
-  RegisterAdminDto,
-} from './dto/register.dto';
+import { BaseRegisterDto } from './dto/register.dto';
 import type {
   AuthResponse,
   JwtPayload,
@@ -31,7 +27,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
   ) {}
 
-  async registerUser(registerDto: RegisterUserDto): Promise<AuthResponse> {
+  async registerUser(registerDto: BaseRegisterDto): Promise<AuthResponse> {
     const user = await this.usersService.create({
       ...registerDto,
       role: UserRole.USER,
@@ -39,9 +35,7 @@ export class AuthService {
     return this.generateTokenResponse(user);
   }
 
-  async registerMerchant(
-    registerDto: RegisterMerchantDto,
-  ): Promise<AuthResponse> {
+  async registerMerchant(registerDto: BaseRegisterDto): Promise<AuthResponse> {
     const user = await this.usersService.create({
       ...registerDto,
       role: UserRole.MERCHANT,
@@ -49,7 +43,7 @@ export class AuthService {
     return this.generateTokenResponse(user);
   }
 
-  async registerAdmin(registerDto: RegisterAdminDto): Promise<AuthResponse> {
+  async registerAdmin(registerDto: BaseRegisterDto): Promise<AuthResponse> {
     const user = await this.usersService.create({
       ...registerDto,
       role: UserRole.ADMIN,
@@ -57,8 +51,11 @@ export class AuthService {
     return this.generateTokenResponse(user);
   }
 
-  async signIn(username: string, password: string): Promise<AuthResponse> {
-    const user = await this.usersService.findOne(username);
+  async signIn(
+    usernameOrPhone: string,
+    password: string,
+  ): Promise<AuthResponse> {
+    const user = await this.usersService.findByUsernameOrPhone(usernameOrPhone);
     if (!user) {
       throw new UnauthorizedException('用户名或密码错误');
     }
@@ -110,6 +107,74 @@ export class AuthService {
       access_token: accessToken,
       refresh_token: newRefreshToken.token,
     };
+  }
+
+  async smsLogin(phone: string, code: string): Promise<AuthResponse> {
+    // 验证验证码
+    const isCodeValid = await this.validateSmsCode(phone, code);
+    if (!isCodeValid) {
+      throw new UnauthorizedException('验证码无效或已过期');
+    }
+
+    const user = await this.usersService.findByPhone(phone);
+    if (!user) {
+      throw new UnauthorizedException('手机号未注册');
+    }
+
+    if (user.status !== UserStatus.ACTIVE) {
+      throw new UnauthorizedException('账户状态异常');
+    }
+
+    // 撤销用户的所有现有刷新令牌
+    await this.revokeAllUserTokens(user.id);
+
+    await this.usersService.updateLastLogin(user.id);
+    return this.generateTokenResponse(user);
+  }
+
+  async facebookLogin(_accessToken: string): Promise<AuthResponse> {
+    // TODO: 实现Facebook登录逻辑
+    // 1. 验证Facebook accessToken
+    // 2. 获取Facebook用户信息
+    // 3. 查找或创建用户
+    throw new Error('Facebook登录功能暂未实现');
+  }
+
+  async bindPhone(userId: string, phone: string, code: string): Promise<void> {
+    // 验证验证码
+    const isCodeValid = await this.validateBindCode(userId, phone, code);
+    if (!isCodeValid) {
+      throw new UnauthorizedException('验证码无效或已过期');
+    }
+
+    // 检查手机号是否已被其他用户使用
+    const existingUser = await this.usersService.findByPhone(phone);
+    if (existingUser && existingUser.id !== userId) {
+      throw new ForbiddenException('手机号已被其他用户使用');
+    }
+
+    // 更新用户手机号
+    await this.usersService.updatePhone(userId, phone);
+  }
+
+  async generateBindCode(userId: string, phone: string): Promise<string> {
+    // 生成6位数字验证码
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // 存储验证码到数据库，有效期10分钟
+    await this.prisma.verificationCode.create({
+      data: {
+        identifier: `${userId}_${phone}`,
+        code,
+        type: 'SMS',
+        purpose: 'PHONE_BINDING',
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10分钟
+      },
+    });
+
+    // 注意：这里只是生成验证码，实际项目中不应该返回验证码
+    // 这里为了测试方便返回验证码
+    return code;
   }
 
   async logout(refreshTokenString: string): Promise<void> {
@@ -185,5 +250,63 @@ export class AuthService {
       },
       data: { isRevoked: true },
     });
+  }
+
+  private async validateSmsCode(phone: string, code: string): Promise<boolean> {
+    const verificationRecord = await this.prisma.verificationCode.findFirst({
+      where: {
+        identifier: phone,
+        code,
+        type: 'SMS',
+        purpose: 'LOGIN',
+        isUsed: false,
+        expiresAt: {
+          gt: new Date(),
+        },
+      },
+    });
+
+    if (!verificationRecord) {
+      return false;
+    }
+
+    // 标记验证码为已使用
+    await this.prisma.verificationCode.update({
+      where: { id: verificationRecord.id },
+      data: { isUsed: true },
+    });
+
+    return true;
+  }
+
+  private async validateBindCode(
+    userId: string,
+    phone: string,
+    code: string,
+  ): Promise<boolean> {
+    const verificationRecord = await this.prisma.verificationCode.findFirst({
+      where: {
+        identifier: `${userId}_${phone}`,
+        code,
+        type: 'SMS',
+        purpose: 'PHONE_BINDING',
+        isUsed: false,
+        expiresAt: {
+          gt: new Date(),
+        },
+      },
+    });
+
+    if (!verificationRecord) {
+      return false;
+    }
+
+    // 标记验证码为已使用
+    await this.prisma.verificationCode.update({
+      where: { id: verificationRecord.id },
+      data: { isUsed: true },
+    });
+
+    return true;
   }
 }
