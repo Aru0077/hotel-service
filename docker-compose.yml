@@ -27,6 +27,8 @@ services:
     restart: always
     ports:
       - "6379:6379"
+    environment:
+      - REDIS_PASSWORD=aruhan0077
     # volumes:
     #   - redis_data:/data
     #   - ./redis.conf:/usr/local/etc/redis/redis.conf

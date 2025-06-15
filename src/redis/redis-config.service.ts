@@ -10,7 +10,7 @@ export class RedisConfigService {
     return new Redis({
       host: this.configService.get<string>('REDIS_HOST'),
       port: this.configService.get<number>('REDIS_PORT'),
-      password: this.configService.get<string>('REDIS_PASSWORD'),
+      // password: this.configService.get<string>('REDIS_PASSWORD'),
       db: this.configService.get<number>('REDIS_DB'),
       connectTimeout: 10000,
       commandTimeout: 5000,

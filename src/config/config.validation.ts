@@ -13,10 +13,15 @@ export const configValidationSchema = Joi.object({
   // Redis配置
   REDIS_HOST: Joi.string().default('localhost'),
   REDIS_PORT: Joi.number().port().default(6379),
-  REDIS_PASSWORD: Joi.string().optional(),
+  // REDIS_PASSWORD: Joi.string().optional(),
   REDIS_DB: Joi.number().min(0).max(15).default(0),
 
   // JWT配置
-  JWT_SECRET: Joi.string().required(),
-  JWT_EXPIRES_IN: Joi.string().default('7d'),
+  JWT_SECRET: Joi.string().min(32).required(),
+  JWT_EXPIRES_IN: Joi.string().default('15m'),
+  JWT_REFRESH_SECRET: Joi.string().min(32).required(),
+  JWT_REFRESH_EXPIRES_IN: Joi.string().default('7d'),
+
+  // 跨域配置
+  ALLOWED_ORIGINS: Joi.string().optional(),
 });
