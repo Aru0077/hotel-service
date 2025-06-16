@@ -9,11 +9,9 @@ services:
       # PostgreSQL性能优化配置
       POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
     ports:
-      - 5432:5432
-    # volumes:
-    #   - postgres_data:/var/lib/postgresql/data
-    #   - ./postgresql.conf:/etc/postgresql/postgresql.conf
-    # command: postgres -c config_file=/etc/postgresql/postgresql.conf
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - /www/server/docker_data/postgres:/var/lib/postgresql/data
     networks:
       - hotel_network
     healthcheck:
@@ -26,13 +24,9 @@ services:
     image: redis:7.4-alpine
     restart: always
     ports:
-      - "6379:6379"
-    environment:
-      - REDIS_PASSWORD=aruhan0077
-    # volumes:
-    #   - redis_data:/data
-    #   - ./redis.conf:/usr/local/etc/redis/redis.conf
-    # command: redis-server /usr/local/etc/redis/redis.conf
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - /www/server/docker_data/redis:/data
     networks:
       - hotel_network
     healthcheck:
@@ -42,22 +36,48 @@ services:
       retries: 3
 
   # 应用服务
-  # app:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile
-  #   ports:
-  #     - "3000:3000"
-  #   environment:
-  #     - NODE_ENV=production
-  #   depends_on:
-  #     db:
-  #       condition: service_healthy
-  #     redis:
-  #       condition: service_healthy
-  #   networks:
-  #     - hotel_network
-  #   restart: unless-stopped
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    restart: always
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      # 基础配置
+      - NODE_ENV=production
+      - PORT=3000
+
+      # 数据库配置
+      - DATABASE_URL=postgresql://hotel:aruhan0077@db:5432/hotel?schema=public
+
+      # Redis配置
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+      - REDIS_PASSWORD=aruhan0077
+
+      # JWT配置
+      - JWT_SECRET=89c50182-6eed-431e-80b9-600b0066847f
+      - JWT_REFRESH_SECRET=bbf6aedf-8a74-42c1-9a48-4fa379b2893b
+      - JWT_EXPIRES_IN=15m
+      - JWT_REFRESH_EXPIRES_IN=7d
+      
+    volumes:
+      - /www/server/docker_data/app_logs:/app/logs
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - hotel_network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 volumes:
   postgres_data:

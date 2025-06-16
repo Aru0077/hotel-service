@@ -53,7 +53,6 @@ export class UsersService {
       data: {
         ...userData,
         password: hashedPassword,
-        phoneVerified: userData.role !== UserRole.USER,
       },
     });
 

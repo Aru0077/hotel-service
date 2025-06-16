@@ -1,0 +1,99 @@
+version: '3.8'
+
+services:
+  # PostgreSQL数据库
+  db:
+    image: postgres:13-alpine
+    restart: always
+    container_name: hotel-postgres-local
+    environment:
+      POSTGRES_USER: hotel
+      POSTGRES_PASSWORD: aruhan0077
+      POSTGRES_DB: hotel
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    ports:
+      - "5432:5432"  # 本地开发直接映射，方便数据库工具连接
+    volumes:
+      - postgres_local_data:/var/lib/postgresql/data
+    networks:
+      - hotel_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hotel -d hotel"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis缓存
+  redis:
+    image: redis:7.4-alpine
+    restart: always
+    container_name: hotel-redis-local
+    ports:
+      - "6379:6379"  # 本地开发直接映射
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_local_data:/data
+    networks:
+      - hotel_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # NestJS应用
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.local  # 使用本地开发版Dockerfile
+      target: development
+    restart: always
+    container_name: hotel-app-local
+    ports:
+      - "3000:3000"  # 本地开发直接映射
+    environment:
+      # 开发环境配置
+      - NODE_ENV=development
+      - PORT=3000
+      
+      # 数据库配置
+      - DATABASE_URL=postgresql://hotel:aruhan0077@db:5432/hotel?schema=public
+      
+      # Redis配置
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+      
+      # JWT配置（开发环境用简单密钥）
+      - JWT_SECRET=development-jwt-secret-key-at-least-32-characters-long
+      - JWT_REFRESH_SECRET=development-refresh-secret-key-at-least-32-characters-long
+      - JWT_EXPIRES_IN=15m
+      - JWT_REFRESH_EXPIRES_IN=7d
+    volumes:
+      # 开发时代码热重载
+      - .:/app
+      - /app/node_modules
+      - ./logs:/app/logs
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - hotel_network
+    # 开发环境关闭健康检查，避免干扰
+    # healthcheck:
+    #   disable: true
+
+# 数据卷
+volumes:
+  postgres_local_data:
+    driver: local
+  redis_local_data:
+    driver: local
+
+# 网络
+networks:
+  hotel_network:
+    driver: bridge
+    name: hotel_local_network

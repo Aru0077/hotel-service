@@ -1,0 +1,62 @@
+# 本地开发版Dockerfile - 支持热重载
+FROM node:22-alpine AS development
+
+WORKDIR /app
+
+# 安装必要工具
+RUN apk add --no-cache curl
+
+# 复制package文件
+COPY package*.json ./
+COPY prisma ./prisma/
+
+# 安装所有依赖（包括开发依赖）
+RUN npm ci
+
+# 生成Prisma客户端
+RUN npx prisma generate
+
+# 复制源代码（开发时会被volume覆盖）
+COPY . .
+
+# 暴露端口
+EXPOSE 3000
+
+# 开发模式启动（支持热重载）
+CMD ["npm", "run", "start:dev"]
+
+# 生产构建阶段（复用原来的多阶段构建）
+FROM node:22-alpine AS builder
+
+WORKDIR /app
+COPY package*.json ./
+COPY prisma ./prisma/
+RUN npm ci
+COPY . .
+RUN npx prisma generate
+RUN npm run build
+
+# 生产阶段
+FROM node:22-alpine AS production
+
+WORKDIR /app
+RUN apk add --no-cache dumb-init curl
+RUN addgroup -g 1001 -S nodejs && adduser -S nestjs -u 1001
+
+COPY package*.json ./
+COPY prisma ./prisma/
+RUN npm ci --omit=dev && npm cache clean --force
+
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+
+RUN chown -R nestjs:nodejs /app
+USER nestjs
+
+EXPOSE 3000
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:3000/v1/health || exit 1
+
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["node", "dist/main"]
