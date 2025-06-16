@@ -75,5 +75,3 @@ jest.config.js
 # 临时文件
 tmp
 temp
-
-tsconfig.json
