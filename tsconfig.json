@@ -6,21 +6,22 @@
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "allowSyntheticDefaultImports": true,
-    "target": "ES2020",  // 从ES2023降低到ES2022
-    "lib": ["ES2020"],   // 添加这行
+    "target": "ES2020",
+    "lib": ["ES2020"],
     "sourceMap": true,
     "outDir": "./dist",
     "baseUrl": "./",
     "incremental": true,
     "skipLibCheck": true,
-    // "strictPropertyInitialization": false,
-    // "resolveJsonModule": true,
-    // "strictNullChecks": false,
+    "strictPropertyInitialization": false,
+    "resolveJsonModule": true,
     "forceConsistentCasingInFileNames": true,
-    "noImplicitAny": true,
-    "esModuleInterop": true,    // 新增
-    "moduleResolution": "node",  // 新增
+    "noImplicitAny": false,
+    "esModuleInterop": true,
+    "moduleResolution": "node",
     "strictBindCallApply": false,
-    "noFallthroughCasesInSwitch": false
+    "noFallthroughCasesInSwitch": false,
+    "strictNullChecks": false,
+    "strict": false
   }
 }
