@@ -5,6 +5,8 @@ module.exports = {
     tsconfigRootDir: __dirname,
     sourceType: 'module',
     ecmaVersion: 2020,
+    // 添加这个配置以确保与TS 4.9.5兼容
+    warnOnUnsupportedTypeScriptVersion: false,
   },
   plugins: ['@typescript-eslint', 'prettier'],
   extends: [
@@ -20,11 +22,11 @@ module.exports = {
   },
   ignorePatterns: ['.eslintrc.js', 'dist/**', 'node_modules/**', 'coverage/**'],
   rules: {
-    // 关闭需要 strictNullChecks 的规则
+    // 针对 TypeScript 4.9.5 优化的规则
     '@typescript-eslint/prefer-nullish-coalescing': 'off',
     '@typescript-eslint/no-unnecessary-type-assertion': 'off',
     
-    // 关闭基础 TypeScript 严格规则（与 TypeScript 4.9.5 兼容）
+    // 基础规则保持不变
     '@typescript-eslint/no-explicit-any': 'off',
     '@typescript-eslint/no-unsafe-argument': 'off',
     '@typescript-eslint/no-unsafe-call': 'off',
@@ -34,7 +36,10 @@ module.exports = {
     '@typescript-eslint/no-redundant-type-constituents': 'off',
     '@typescript-eslint/require-await': 'off',
     
-    // 保留重要的代码质量规则
+    // 添加 TypeScript 4.9.5 特定的规则调整
+    '@typescript-eslint/no-inferrable-types': 'off',
+    '@typescript-eslint/ban-ts-comment': 'warn',
+    
     '@typescript-eslint/no-unused-vars': [
       'error',
       {
@@ -44,12 +49,10 @@ module.exports = {
     ],
     '@typescript-eslint/no-floating-promises': 'warn',
     
-    // Prettier 集成
     'prettier/prettier': 'error',
   },
   overrides: [
     {
-      // Prisma 相关文件完全跳过类型检查
       files: ['**/prisma/**/*.ts', '**/*.prisma'],
       rules: {
         '@typescript-eslint/no-unsafe-call': 'off',
@@ -60,7 +63,6 @@ module.exports = {
       },
     },
     {
-      // 认证模块宽松规则（处理 Prisma 类型）
       files: ['src/auth/**/*.ts', 'src/users/**/*.ts'],
       rules: {
         '@typescript-eslint/no-unsafe-call': 'off',

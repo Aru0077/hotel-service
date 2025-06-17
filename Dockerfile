@@ -14,14 +14,18 @@ COPY prisma ./prisma/
 # 安装所有依赖
 RUN npm ci
 
+# 复制TypeScript配置文件（关键步骤）
+COPY tsconfig*.json ./
+COPY nest-cli.json ./
+
 # 复制源代码
 COPY . .
 
 # 生成Prisma客户端
 RUN npx prisma generate
 
-# 构建应用
-RUN npm run build
+# 构建应用（使用显式的TypeScript配置）
+RUN npx nest build --tsc
 
 # 清理开发依赖以减小镜像大小
 RUN npm prune --production

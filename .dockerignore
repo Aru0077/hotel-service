@@ -69,7 +69,8 @@ docs
 # 开发工具配置
 .eslintrc*
 .prettierrc*
-tsconfig.json
+# 注释掉这行，确保 tsconfig.json 被复制
+# tsconfig.json
 jest.config.js
 
 # 临时文件

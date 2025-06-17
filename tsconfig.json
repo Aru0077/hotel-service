@@ -22,6 +22,10 @@
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false,
     "strictNullChecks": false,
-    "strict": false
-  }
+    "strict": false,
+    "useDefineForClassFields": false,
+    "importsNotUsedAsValues": "remove"
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
 }
