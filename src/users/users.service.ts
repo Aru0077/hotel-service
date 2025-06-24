@@ -16,68 +16,74 @@ export interface CreateUserData {
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
+  // 创建用户
   async create(userData: CreateUserData): Promise<User> {
-    // 检查用户名是否存在
-    const existingUser = await this.prisma.user.findUnique({
-      where: { username: userData.username },
-    });
-    if (existingUser) {
-      throw new ConflictException('用户名已存在');
-    }
-
-    // 检查手机号（如果提供）
-    if (userData.phone) {
-      const existingPhone = await this.prisma.user.findUnique({
-        where: { phone: userData.phone },
+    return this.prisma.$transaction(async (tx) => {
+      // 检查用户名是否存在
+      const existingUser = await this.prisma.user.findUnique({
+        where: { username: userData.username },
       });
-      if (existingPhone) {
-        throw new ConflictException('手机号已存在');
+      if (existingUser) {
+        throw new ConflictException('用户名已存在');
       }
-    }
 
-    // 检查邮箱（如果提供）
-    if (userData.email) {
-      const existingEmail = await this.prisma.user.findUnique({
-        where: { email: userData.email },
-      });
-      if (existingEmail) {
-        throw new ConflictException('邮箱已存在');
+      // 检查手机号（如果提供）
+      if (userData.phone) {
+        const existingPhone = await this.prisma.user.findUnique({
+          where: { phone: userData.phone },
+        });
+        if (existingPhone) {
+          throw new ConflictException('手机号已存在');
+        }
       }
-    }
 
-    // 密码加密
-    const hashedPassword = await bcrypt.hash(userData.password, 10);
+      // 检查邮箱（如果提供）
+      if (userData.email) {
+        const existingEmail = await this.prisma.user.findUnique({
+          where: { email: userData.email },
+        });
+        if (existingEmail) {
+          throw new ConflictException('邮箱已存在');
+        }
+      }
 
-    // 创建用户
-    const user = await this.prisma.user.create({
-      data: {
-        ...userData,
-        password: hashedPassword,
-      },
-    });
+      // 密码加密
+      const hashedPassword = await bcrypt.hash(userData.password, 10);
 
-    // 为普通用户创建档案
-    if (userData.role === UserRole.USER) {
-      await this.prisma.userProfile.create({
-        data: { userId: user.id },
+      // 创建用户
+      const user = await this.prisma.user.create({
+        data: {
+          ...userData,
+          password: hashedPassword,
+        },
       });
-    }
 
-    return user;
+      // 为普通用户创建档案
+      if (userData.role === UserRole.USER) {
+        await this.prisma.userProfile.create({
+          data: { userId: user.id },
+        });
+      }
+
+      return user;
+    });
   }
 
+  // 用户名查找
   async findByUsername(username: string): Promise<User | null> {
     return this.prisma.user.findUnique({
       where: { username },
     });
   }
 
+  // 手机查找
   async findByPhone(phone: string): Promise<User | null> {
     return this.prisma.user.findUnique({
       where: { phone },
     });
   }
 
+  // 手机或用户名查找
   async findByUsernameOrPhone(usernameOrPhone: string): Promise<User | null> {
     // 简单判断是否为手机号格式
     const isPhone = /^\+?[1-9]\d{1,14}$/.test(usernameOrPhone);
@@ -89,6 +95,7 @@ export class UsersService {
     }
   }
 
+  // 更新手机
   async updatePhone(userId: string, phone: string): Promise<void> {
     await this.prisma.user.update({
       where: { id: userId },
@@ -99,6 +106,7 @@ export class UsersService {
     });
   }
 
+  // 更新最近一次登录
   async updateLastLogin(userId: string): Promise<void> {
     await this.prisma.user.update({
       where: { id: userId },

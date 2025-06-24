@@ -8,7 +8,6 @@ import { AuthController } from './auth.controller';
 import { AuthGuard } from './auth.guard';
 import { RolesGuard } from './roles.guard';
 import { UsersModule } from '../users/users.module';
-import { jwtConstants } from './constants';
 
 @Module({
   imports: [
@@ -17,7 +16,7 @@ import { jwtConstants } from './constants';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         global: true,
-        secret: configService.get<string>('JWT_SECRET') ?? jwtConstants.secret,
+        secret: configService.get<string>('JWT_SECRET') ?? '',
         signOptions: {
           expiresIn: configService.get<string>('JWT_EXPIRES_IN') ?? '15m',
         },

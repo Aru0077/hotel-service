@@ -17,10 +17,6 @@ import { Request } from 'express';
 export class ResponseInterceptor<T>
   implements NestInterceptor<T, ApiResponse<T>>
 {
-  private timestampCache: number = Date.now();
-  private lastUpdate: number = Date.now();
-  private readonly CACHE_DURATION = 1000; // 缓存1秒，减少时间戳生成频率
-
   intercept(
     context: ExecutionContext,
     next: CallHandler,

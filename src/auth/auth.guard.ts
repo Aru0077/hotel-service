@@ -8,7 +8,6 @@ import {
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
-import { jwtConstants } from './constants';
 import { IS_PUBLIC_KEY } from './decorators/public.decorator';
 import type { JwtPayload } from './types/auth.types';
 
@@ -35,9 +34,7 @@ export class AuthGuard implements CanActivate {
     }
 
     try {
-      const payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
-        secret: jwtConstants.secret,
-      });
+      const payload = await this.jwtService.verifyAsync<JwtPayload>(token);
       request.user = payload;
     } catch {
       throw new UnauthorizedException('访问令牌无效');

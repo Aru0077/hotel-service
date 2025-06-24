@@ -172,9 +172,13 @@ export class AuthService {
       },
     });
 
-    // 注意：这里只是生成验证码，实际项目中不应该返回验证码
-    // 这里为了测试方便返回验证码
-    return code;
+    // 生产环境安全处理
+    if (this.configService.get<string>('NODE_ENV') === 'development') {
+      return code; // 仅开发环境返回验证码
+    }
+
+    // TODO: 集成短信服务发送验证码到手机
+    return '验证码已发送至您的手机';
   }
 
   async logout(refreshTokenString: string): Promise<void> {

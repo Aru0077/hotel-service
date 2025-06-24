@@ -1,4 +1,4 @@
-import { Injectable, OnModuleDestroy, Logger } from '@nestjs/common';
+import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import Redis from 'ioredis';
 import { RedisConfigService } from './redis-config.service';
 import { ErrorUtil } from '../common/utils/error.util';
@@ -13,7 +13,7 @@ interface EventData {
 type EventHandler = (eventData: EventData) => Promise<void> | void;
 
 @Injectable()
-export class EventService implements OnModuleDestroy {
+export class EventService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(EventService.name);
   private readonly subscribers: Map<string, Redis> = new Map();
   private readonly eventHandlers: Map<string, Set<EventHandler>> = new Map();

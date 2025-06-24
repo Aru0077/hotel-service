@@ -52,7 +52,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
   // 核心缓存操作
   async set(key: string, value: any, ttl?: number): Promise<void> {
-    const serializedValue = JSON.stringify(value);
+    const serializedValue = this.serialize(value);
     if (ttl) {
       await this.redis.setex(key, ttl, serializedValue);
     } else {
