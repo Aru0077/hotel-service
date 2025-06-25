@@ -16,7 +16,11 @@ import { UsersModule } from '../users/users.module';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         global: true,
-        secret: configService.get<string>('JWT_SECRET') ?? '',
+        secret:
+          configService.get<string>('JWT_SECRET') ??
+          (() => {
+            throw new Error('JWT_SECRET环境变量未配置');
+          })(),
         signOptions: {
           expiresIn: configService.get<string>('JWT_EXPIRES_IN') ?? '15m',
         },

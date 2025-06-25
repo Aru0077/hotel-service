@@ -100,7 +100,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     return await this.redis.mget(...keys);
   }
 
-  async mset(keyValuePairs: Record<string, any>): Promise<void> {
+  async mset(keyValuePairs: Record<string, unknown>): Promise<void> {
     const pairs: string[] = [];
     Object.entries(keyValuePairs).forEach(([key, value]) => {
       pairs.push(key, JSON.stringify(value));

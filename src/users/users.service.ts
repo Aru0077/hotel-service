@@ -27,31 +27,11 @@ export class UsersService {
         throw new ConflictException('用户名已存在');
       }
 
-      // 检查手机号（如果提供）
-      if (userData.phone) {
-        const existingPhone = await this.prisma.user.findUnique({
-          where: { phone: userData.phone },
-        });
-        if (existingPhone) {
-          throw new ConflictException('手机号已存在');
-        }
-      }
-
-      // 检查邮箱（如果提供）
-      if (userData.email) {
-        const existingEmail = await this.prisma.user.findUnique({
-          where: { email: userData.email },
-        });
-        if (existingEmail) {
-          throw new ConflictException('邮箱已存在');
-        }
-      }
-
       // 密码加密
       const hashedPassword = await bcrypt.hash(userData.password, 10);
 
       // 创建用户
-      const user = await this.prisma.user.create({
+      const user = await tx.user.create({
         data: {
           ...userData,
           password: hashedPassword,
@@ -60,7 +40,7 @@ export class UsersService {
 
       // 为普通用户创建档案
       if (userData.role === UserRole.USER) {
-        await this.prisma.userProfile.create({
+        await tx.userProfile.create({
           data: { userId: user.id },
         });
       }
