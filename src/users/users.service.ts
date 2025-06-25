@@ -20,7 +20,7 @@ export class UsersService {
   async create(userData: CreateUserData): Promise<User> {
     return this.prisma.$transaction(async (tx) => {
       // 检查用户名是否存在
-      const existingUser = await this.prisma.user.findUnique({
+      const existingUser = await tx.user.findUnique({
         where: { username: userData.username },
       });
       if (existingUser) {
@@ -85,14 +85,24 @@ export class UsersService {
 
   // 手机或用户名查找
   async findByUsernameOrPhone(usernameOrPhone: string): Promise<User | null> {
-    // 简单判断是否为手机号格式
-    const isPhone = /^\+?[1-9]\d{1,14}$/.test(usernameOrPhone);
+    // 同时尝试用户名和手机号查找，优先用户名
+    const userByUsername = await this.prisma.user.findUnique({
+      where: { username: usernameOrPhone },
+    });
 
+    if (userByUsername) {
+      return userByUsername;
+    }
+
+    // 如果按用户名找不到，且输入像手机号，则尝试手机号查找
+    const isPhone =
+      /^\+?[1-9]\d{8,14}$/.test(usernameOrPhone) &&
+      usernameOrPhone.length >= 10;
     if (isPhone) {
       return this.findByPhone(usernameOrPhone);
-    } else {
-      return this.findByUsername(usernameOrPhone);
     }
+
+    return null;
   }
 
   // 更新手机
