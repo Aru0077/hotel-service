@@ -14,255 +14,174 @@ datasource db {
 }
 
 // ================================
-// 用户认证核心表
+// 枚举定义区域
 // ================================
 
-// 基础用户表 - 统一认证入口
+// 用户角色枚举
+// 定义系统中所有用户的角色类型
+enum UserRole {
+  CLIENT // 普通用户（客户端）- 预订宾馆的终端用户
+  BUSINESS // 商家用户 - 拥有和管理宾馆的商户
+  ADMIN // 管理员 - 系统管理和运营人员
+}
+
+//  认证方式枚举
+//  支持多种用户身份验证方式
+enum AuthType {
+  PHONE // 手机验证码登录
+  FACEBOOK // Facebook第三方登录
+  PASSWORD // 传统账号密码登录
+  EMAIL // 邮箱登录验证
+}
+
+// 用户状态枚举
+// 管理用户账户的生命周期状态
+enum UserStatus {
+  ACTIVE // 激活状态 - 正常使用
+  INACTIVE // 禁用状态 - 暂停使用权限
+  PENDING // 待审核状态 - 等待管理员审批
+}
+
+// ================================
+// 核心用户表 - 统一管理所有角色的基础信息
+// ================================
+// 用户主表
+// 作为整个用户体系的核心，统一管理所有角色用户的基础信息
+// 采用多态设计，通过role字段区分不同类型的用户
 model User {
-  id       String  @id @default(cuid())
-  username String  @unique // 用户名（必填）
-  password String // 密码哈希（必填）
-  phone    String? @unique // 手机号（注册后绑定，用于登录和找回密码，仅管理员和商家）
+  id   Int    @id @default(autoincrement()) // 主键ID，自增
+  uuid String @unique @default(uuid()) @db.Char(36) // 外部标识符，用于API接口
 
-  // 角色和状态
-  role   UserRole // 用户角色
-  status UserStatus @default(ACTIVE) // 用户状态
+  role      UserRole // 用户角色，决定用户的权限和功能范围
+  status    UserStatus @default(ACTIVE) // 用户状态，控制账户的可用性
+  createdAt DateTime   @default(now()) @map("created_at") // 创建时间
+  updatedAt DateTime   @updatedAt @map("updated_at") // 最后更新时间
 
-  // 第三方登录
-  facebookId String? @unique // Facebook用户ID（仅普通用户）
-  email      String? @unique // 邮箱（普通用户接受订单信息）
+  // ================================
+  // 关联关系定义
+  // ================================
+  authCredentials AuthCredential[] // 认证信息，支持多种登录方式的一对多关系
 
-  // 验证状态
-  emailVerified Boolean @default(false) // 邮箱验证状态
-  phoneVerified Boolean @default(false) // 手机验证状态（商家/管理员必须验证才能使用完整功能）
+  clientProfile ClientProfile? // 普通用户扩展信息，一对一关系
+  hotels        Hotel[] // 宾馆信息，商家用户可拥有多个宾馆的一对多关系
+  adminProfile  AdminProfile? // 管理员扩展信息，一对一关系
 
-  // 时间戳
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  lastLoginAt DateTime? // 最后登录时间
-
-  // 关联关系
-  userProfile   UserProfile? // 普通用户档案
-  hotels        Hotel[] // 商家管理的宾馆列表
-  refreshTokens RefreshToken[] // 刷新令牌
-
+  // ================================
+  // 数据库索引优化
+  // ================================
+  @@index([role, status]) // 复合索引，优化角色和状态的查询性能
   @@map("users")
 }
 
-// 普通用户档案表
-model UserProfile {
-  id     String @id @default(cuid())
-  userId String @unique
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+// ================================
+// 认证信息表 - 支持多种登录方式扩展
+// ================================
+// 用户认证凭据表
+// 支持用户通过多种方式进行身份验证
+// 一个用户可以绑定多种认证方式（如同时支持手机号和Facebook登录）
+model AuthCredential {
+  id         Int      @id @default(autoincrement()) // 主键ID
+  userId     Int      @map("user_id") // 关联的用户ID
+  authType   AuthType @map("auth_type") // 认证方式类型
+  identifier String   @db.VarChar(255) // 登录标识符（手机号/Facebook ID/用户名/邮箱地址）
+  credential String?  @db.VarChar(255) // 认证凭据（密码哈希值，验证码类型不存储）
 
-  // 个人信息
-  nickname String? // 昵称
-  avatar   String? // 头像URL
-  birthday DateTime? // 生日
-  gender   Gender? // 性别
+  createdAt DateTime @default(now()) @map("created_at") // 创建时间
+  updatedAt DateTime @updatedAt @map("updated_at") // 更新时间
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  // ================================
+  // 关联关系
+  // ================================
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade) // 级联删除
 
-  // 关联信息
-  guestProfiles  GuestProfile[] // 入住人员信息
-  paymentMethods PaymentMethod[] // 支付方式
-
-  @@map("user_profiles")
+  // ================================
+  // 约束和索引
+  // ================================
+  @@unique([authType, identifier], name: "unique_auth_identifier") // 确保同一认证方式下标识符唯一
+  @@index([userId]) // 用户ID索引，优化查询性能
+  @@map("auth_credentials")
 }
 
-// 宾馆信息表（暂时保留，后续扩展用）
+// ================================
+// 普通用户扩展表 - 客户端用户的特有信息
+// ================================
+// 普通用户档案表
+// 存储客户端用户的个人信息和偏好设置
+// 主要针对通过Facebook等社交平台注册的用户
+model ClientProfile {
+  userId     Int      @id @map("user_id") // 用户ID，作为主键
+  facebookId String   @unique @map("facebook_id") @db.VarChar(100) // Facebook用户唯一标识
+  fullName   String?  @map("full_name") @db.VarChar(50) // 用户全名
+  avatar     String?  @db.VarChar(255) // 头像图片URL地址
+  createdAt  DateTime @default(now()) @map("created_at") // 创建时间
+  updatedAt  DateTime @updatedAt @map("updated_at") // 更新时间
+
+  // ================================
+  // 关联关系
+  // ================================
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade) // 与用户主表的一对一关联
+
+  @@map("client_profiles")
+}
+
+// ================================
+// 宾馆信息表 - 商家核心业务实体
+// ================================
+// 宾馆信息表
+// 存储宾馆的详细信息和运营数据
+// 一个商家用户可以拥有和管理多个宾馆
 model Hotel {
-  id         String @id @default(cuid())
-  merchantId String // 商家用户ID
-  merchant   User   @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  id              Int      @id @default(autoincrement()) // 宾馆唯一标识ID
+  userId          Int      @map("user_id") // 关联的商家用户ID
+  hotelName       String   @map("hotel_name") @db.VarChar(100) // 宾馆名称
+  companyName     String?  @map("company_name") @db.VarChar(100) // 所属公司名称
+  contactPhone    String   @map("contact_phone") @db.VarChar(20) // 联系电话
+  bankAccount     String?  @map("bank_account") @db.VarChar(50) // 银行账户信息
+  businessLicense String?  @map("business_license") @db.VarChar(255) // 营业执照文件路径
+  address         String   @db.VarChar(255) // 宾馆详细地址
+  email           String?  @db.VarChar(100) // 联系邮箱
+  description     String?  @db.Text // 宾馆描述信息
+  facilities      Json? // 设施信息（JSON格式存储，如WiFi、停车场、游泳池等）
+  starRating      Int?     @map("star_rating") @db.SmallInt // 星级评定（1-5星）
+  checkInTime     String?  @map("check_in_time") @db.VarChar(10) // 标准入住时间（如14:00）
+  checkOutTime    String?  @map("check_out_time") @db.VarChar(10) // 标准退房时间（如12:00）
+  status          String   @default("ACTIVE") @db.VarChar(20) // 宾馆运营状态
+  createdAt       DateTime @default(now()) @map("created_at") // 创建时间
+  updatedAt       DateTime @updatedAt @map("updated_at") // 最后更新时间
 
-  // 宾馆基本信息
-  name        String // 宾馆名称
-  description String? // 宾馆描述
-  starRating  Int? // 星级评定（1-5星）
-  hotelType   String? // 宾馆类型
+  // ================================
+  // 关联关系
+  // ================================
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade) // 与商家用户的多对一关联
 
-  // 商业信息
-  businessLicense String // 营业执照号
-  contactPerson   String // 联系人姓名
-  contactPhone    String // 联系人手机号（必须验证）
-
-  // 宾馆联系信息
-  hotelPhone String // 宾馆前台电话
-  hotelEmail String? // 宾馆邮箱
-  website    String? // 官方网站
-
-  // 地址信息
-  province  String // 省份/地区
-  city      String // 城市
-  district  String? // 区县
-  address   String // 详细地址
-  zipCode   String? // 邮政编码
-  latitude  Float? // 纬度
-  longitude Float? // 经度
-
-  // 服务设施
-  facilities   String[] // 设施列表
-  amenities    String[] // 便民设施
-  checkInTime  String   @default("14:00") // 入住时间
-  checkOutTime String   @default("12:00") // 退房时间
-
-  // 审核状态
-  verificationStatus HotelVerificationStatus @default(PENDING)
-  verifiedAt         DateTime? // 审核通过时间
-  rejectionReason    String? // 审核拒绝原因
-
-  // 经营状态
-  isActive Boolean @default(true) // 是否正常营业
-  isOnline Boolean @default(false) // 是否在线接单
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([merchantId])
+  // ================================
+  // 索引优化
+  // ================================
+  @@index([userId]) // 商家用户ID索引，快速查找特定商家的所有宾馆
+  @@index([contactPhone]) // 联系电话索引，支持电话号码查询
+  @@index([hotelName]) // 宾馆名称索引，支持名称搜索
   @@map("hotels")
 }
 
-// 入住人员信息表
-model GuestProfile {
-  id            String      @id @default(cuid())
-  userProfileId String
-  userProfile   UserProfile @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
-
-  // 入住人信息
-  firstName      String // 名
-  lastName       String // 姓
-  passportNumber String // 护照号码
-  gender         Gender? // 性别
-  nationality    String  @default("蒙古国") // 国籍
-
-  // 标记信息
-  isDefault Boolean @default(false) // 是否为默认入住人
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([userProfileId, passportNumber]) // 同一用户不能添加相同护照号的入住人
-  @@map("guest_profiles")
-}
-
-// 支付方式表 - 仅支持银联支付
-model PaymentMethod {
-  id            String      @id @default(cuid())
-  userProfileId String
-  userProfile   UserProfile @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
-
-  // 银联卡信息（加密存储）
-  cardNumber     String // 银联卡号（脱敏显示）
-  cardHolderName String // 持卡人姓名
-  expiryMonth    Int // 过期月份
-  expiryYear     Int // 过期年份
-  lastFourDigits String // 卡号后四位（用于显示）
-
-  // 状态
-  isDefault Boolean @default(false) // 是否为默认支付方式
-  isActive  Boolean @default(true) // 是否可用
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("payment_methods")
-}
-
 // ================================
-// 认证支持表
+// 管理员扩展表 - 系统管理人员信息
 // ================================
+// 管理员档案表
+// 存储系统管理员的权限配置和管理信息
+// 支持细粒度的权限控制和部门管理
+model AdminProfile {
+  userId      Int       @id @map("user_id") // 管理员用户ID
+  username    String    @unique @db.VarChar(50) // 管理员用户名，系统内唯一
+  department  String?   @db.VarChar(50) // 所属部门（如运营部、技术部）
+  permissions Json? // 权限配置（JSON格式，定义具体的操作权限）
+  lastLoginAt DateTime? @map("last_login_at") // 最后登录时间，用于安全审计
+  createdAt   DateTime  @default(now()) @map("created_at") // 创建时间
+  updatedAt   DateTime  @updatedAt @map("updated_at") // 更新时间
 
-model VerificationCode {
-  id String @id @default(cuid())
+  // ================================
+  // 关联关系
+  // ================================
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade) // 与用户主表的一对一关联
 
-  // 验证信息
-  identifier String // 手机号或邮箱
-  code       String // 验证码
-  type       VerificationCodeType // 验证码类型
-  purpose    VerificationPurpose // 使用目的
-
-  // 状态
-  isUsed      Boolean @default(false) // 是否已使用
-  attempts    Int     @default(0) // 尝试次数
-  maxAttempts Int     @default(3) // 最大尝试次数
-
-  // 有效期
-  expiresAt DateTime // 过期时间
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([identifier, type, purpose, isUsed])
-  @@map("verification_codes")
-}
-
-// 刷新令牌表 - 支持安全的登录状态管理
-model RefreshToken {
-  id     String @id @default(cuid())
-  token  String @unique // 刷新令牌
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  // 设备信息
-  deviceId   String? // 设备标识
-  deviceName String? // 设备名称
-  userAgent  String? // 用户代理
-  ipAddress  String? // IP地址
-  platform   String? // 平台（iOS、Android、Web）
-
-  // 有效期
-  expiresAt DateTime // 过期时间
-  isRevoked Boolean  @default(false) // 是否已撤销
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([userId, isRevoked])
-  @@map("refresh_tokens")
-}
-
-// ================================
-// 枚举定义
-// ================================
-
-enum UserRole {
-  MERCHANT // 商家（可管理多个宾馆）
-  USER // 普通用户
-  ADMIN // 管理员
-}
-
-enum UserStatus {
-  ACTIVE // 正常状态
-  INACTIVE // 未激活
-  BANNED // 被封禁
-  PENDING_VERIFICATION // 待验证
-}
-
-enum Gender {
-  MALE // 男性
-  FEMALE // 女性
-  OTHER // 其他
-}
-
-enum HotelVerificationStatus {
-  PENDING // 待审核
-  APPROVED // 审核通过
-  REJECTED // 审核拒绝
-  SUSPENDED // 暂停营业
-}
-
-enum VerificationCodeType {
-  SMS // 短信验证码
-  EMAIL // 邮箱验证码
-}
-
-enum VerificationPurpose {
-  REGISTRATION // 注册
-  LOGIN // 登录
-  PASSWORD_RESET // 密码重置
-  PHONE_BINDING // 手机号绑定
-  EMAIL_VERIFY // 邮箱验证
-  HOTEL_CONTACT // 宾馆联系人验证
+  @@map("admin_profiles")
 }
