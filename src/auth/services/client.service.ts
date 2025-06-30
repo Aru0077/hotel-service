@@ -3,7 +3,7 @@ import {
   ConflictException,
   Injectable,
 } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../../prisma/prisma.service';
 import { UserService } from './user.service';
 import { ClientRegisterDto, FacebookLoginDto } from '../dto/auth.dto';
 import { AuthType, User, UserRole } from '@prisma/client';
