@@ -8,6 +8,7 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { SecurityModule } from './security/security.module';
 import { ThrottlerGuard } from '@nestjs/throttler';
+import { AuthModule } from './auth/auth.module';
 
 // 导入配置文件
 @Module({
@@ -17,6 +18,7 @@ import { ThrottlerGuard } from '@nestjs/throttler';
     RedisModule,
     HealthModule,
     SecurityModule,
+    AuthModule,
   ],
   controllers: [],
   providers: [
