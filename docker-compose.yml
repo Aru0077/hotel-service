@@ -1,4 +1,39 @@
 services:
+  hotel_service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hotel_service
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_URL=postgresql://hotel:aruhan0077@postgres:5432/hotel?schema=public&connection_limit=20&connect_timeout=60&pool_timeout=20
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=
+      - REDIS_DB=0
+      - JWT_SECRET=89c50182-6eed-431e-80b9-600b0066847f
+      - JWT_EXPIRES_IN=15m
+      - JWT_REFRESH_SECRET=bbf6aedf-8a74-42c1-9a48-4fa379b2893b
+      - JWT_REFRESH_EXPIRES_IN=7d
+      - ALLOWED_ORIGINS=https://admin.yoursite.com,https://merchant.yoursite.com,http://localhost:3000
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - hotel_network
+    volumes:
+      - service_logs:/service/logs
+    healthcheck:
+      test: ["CMD", "node", "healthcheck.js"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+      
   postgres:
     image: postgres:15-alpine
     container_name: hotel_postgres
@@ -14,6 +49,11 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - hotel_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hotel -d hotel"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7-alpine
@@ -26,11 +66,18 @@ services:
       - redis_data:/data
     networks:
       - hotel_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   postgres_data:
     driver: local
   redis_data:
+    driver: local
+  service_logs:
     driver: local
 
 networks:
