@@ -7,10 +7,10 @@ RUN apk add --no-cache dumb-init
 # 创建应用目录
 WORKDIR /app
 
-# 复制package文件并安装依赖
+# 复制package文件并安装所有依赖（包括开发依赖）
 COPY package*.json ./
 COPY prisma ./prisma/
-RUN npm ci --only=production && npm cache clean --force
+RUN npm ci && npm cache clean --force
 
 # 生成Prisma客户端
 RUN npx prisma generate
@@ -20,6 +20,9 @@ COPY . .
 
 # 构建应用
 RUN npm run build
+
+# 清理开发依赖，只保留生产依赖
+RUN npm ci --only=production && npm cache clean --force
 
 # 复制环境配置文件
 COPY .env.production ./.env

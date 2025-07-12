@@ -1,8 +1,6 @@
 services:
   hotel_service:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: hotel-service:latest
     container_name: hotel_service
     restart: unless-stopped
     ports:
@@ -26,7 +24,7 @@ services:
     networks:
       - hotel_network
     volumes:
-      - service_logs:/service/logs
+      - service_logs:/app/logs
     healthcheck:
       test: ["CMD", "node", "healthcheck.js"]
       interval: 30s
